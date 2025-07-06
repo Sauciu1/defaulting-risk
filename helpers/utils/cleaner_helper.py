@@ -1,7 +1,9 @@
 import seaborn as sns
 import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
 
-def plot_categorical_dist(data, feature, hue=None, title = None):
+def plot_categorical_dist(data, feature, hue=None, title = None, show = True):
     plt.figure(figsize=(8, 1 + 0.5* len(data[feature].unique())))
 
     ax = sns.countplot(data=data, y=feature, hue=hue)
@@ -23,14 +25,47 @@ def plot_categorical_dist(data, feature, hue=None, title = None):
         plt.legend().remove()
 
     plt.tight_layout()
+    if show:
+        plt.show()
     return data[feature].value_counts()
 
 
+def get_outlier_bounds(series, factor=1.5):
+    q1 = series.quantile(0.05)
+    q3 = series.quantile(0.95)
+    iqr = q3 - q1
+    low = q1 - factor * iqr
+    high = q3 + factor * iqr
 
-def plot_numeric_dist(data, feature, hue = None, title=None):
+    if low == high:
+        print("!Warning: low and high bounds are equal. This may indicate a constant or nearly constant series.")
+        return series.min(), series.max()
+
+    if (low > series.min() )or (high < series.max()):
+        print("!Servere outliers detected. Total values:", len(series), "original range:", series.min(), "-", series.max())
+    if (series < low).any():
+        print(f"Hiding outliers bellow {low}: {series[series < low].count()} values;")
+    if (series > high).any():
+        print(f"Hiding outliers above {high}: {series[series > high].count()} values;")
+
+
+    low = max(low, series.min())
+    high = min(high, series.max())
+
+    return low, high
+
+def plot_numeric_dist(data, feature, hue = None, title=None, show= True):
+    data = data.copy()
     plt.figure(figsize=(8, 3))
+    
 
-    ax = sns.histplot(data = data, hue = hue, x= feature, kde=True, bins=30, )
+
+    low, high = get_outlier_bounds(data[feature])
+    data = data[(data[feature] >= low) & (data[feature] <= high)]
+
+    discrete = len(data[feature].unique())<30
+  
+    ax = sns.histplot(data=data, hue=hue, x=feature, kde=True, discrete=discrete, bins=50)
 
     if title:
         plt.title(title)
@@ -43,6 +78,9 @@ def plot_numeric_dist(data, feature, hue = None, title=None):
         ax.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
 
     plt.tight_layout()
+    if show:
+        plt.show()
+
     return ax
 
 

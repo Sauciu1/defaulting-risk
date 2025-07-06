@@ -1,7 +1,7 @@
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-def plot_categorical_distribution(data, feature, hue=None, title = None):
+def plot_categorical_dist(data, feature, hue=None, title = None):
     plt.figure(figsize=(8, 1 + 0.5* len(data[feature].unique())))
 
     ax = sns.countplot(data=data, y=feature, hue=hue)
@@ -19,13 +19,15 @@ def plot_categorical_distribution(data, feature, hue=None, title = None):
 
     if hue and (hue!=feature):
         plt.legend(title=hue, loc='center left', bbox_to_anchor=(1.07, 0.5))
+    elif hue==feature:
+        plt.legend().remove()
 
     plt.tight_layout()
     return data[feature].value_counts()
 
 
 
-def plot_numeric_distribution(data, feature, hue = None, title=None):
+def plot_numeric_dist(data, feature, hue = None, title=None):
     plt.figure(figsize=(8, 3))
 
     ax = sns.histplot(data = data, hue = hue, x= feature, kde=True, bins=30, )

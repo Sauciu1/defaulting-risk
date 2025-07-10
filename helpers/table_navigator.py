@@ -1,4 +1,6 @@
+from typing import Literal
 import pandas as pd
+import os
 
 class ColumnDescriber:
     def __init__(self, tables: dict[str, pd.DataFrame], only_tables: list[str] = None):
@@ -24,7 +26,7 @@ class ColumnDescriber:
             .str.replace(".csv", "", regex=False)
         )
 
-    def _get_col_stats(self, row):
+    def _get_col_stats(self, row:str) -> dict:
         """Get statistics for a specific column."""
         table_name = row['Table']
         col = row['Row']
@@ -67,3 +69,32 @@ class ColumnDescriber:
 
 
         return df
+
+
+
+def get_tables_from_dir(data_dir:str = "data/raw_csv", tables:list[Literal['application_train', 'application_test', 'HomeCredit_columns_description', 'bureau', 'bureau_balance', 'credit_card_balance', 'POS_CASH_balance', 'previous_application', 'installments_payments']] = None) -> dict[str, pd.DataFrame]:
+    """
+    Load CSV files from a specified directory into a dictionary of DataFrames.
+    """
+    
+    csv_files = [f for f in os.listdir(data_dir) if f.endswith('.csv')]
+    if tables:
+        if isinstance(tables, str):
+            tables = [tables]
+        elif not isinstance(tables, list):
+            raise ValueError("The 'tables' parameter must be a list of table names or a single table name string.")
+
+        tables = [t + '.csv' if not t.endswith('.csv') else t for t in tables]
+        csv_files = [f for f in csv_files if f in tables]
+
+    assert len(csv_files) > 0, "No specified CSV files found in directory."
+
+    print("Loading tables:", csv_files)
+
+    tables = {}
+    for file in csv_files:
+
+        table_name = file.replace('.csv', '')
+        tables[table_name] = pd.read_csv(os.path.join(data_dir, file), encoding='Windows-1252')
+        print("loaded", table_name, "with shape", tables[table_name].shape)
+    return tables

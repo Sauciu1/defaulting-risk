@@ -20,4 +20,6 @@ pip install poetry
 poetry install
 ```
 
-**Note**: The previous commands require python 3.13 installe
+**Note**: The previous commands require python 3.13 installed
+
+The dataset needs to be downloaded from [https://www.kaggle.com/competitions/home-credit-default-risk/data](https://www.kaggle.com/competitions/home-credit-default-risk/data), unzipped, and saved into [data/raw_csv](data/raw_csv)

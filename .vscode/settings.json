@@ -1,0 +1,8 @@
+{
+    "jupyter.notebookFileRoot": "${workspaceFolder}",
+    "editor.semanticHighlighting.enabled": true,
+    "python.languageServer": "Pylance",
+    "cSpell.words": [
+        "preanalysed"
+    ],
+}

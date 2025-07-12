@@ -68,8 +68,6 @@ def show_or_generate_image(image_path, generate_func, *args, **kwargs):
         return fig
 
 
-
-
 def normalize_row_ylim(ax):
     """Normalizes the y limits for each row"""
     for i in range(ax.shape[0]):
@@ -77,38 +75,40 @@ def normalize_row_ylim(ax):
         for j in range(ax.shape[1]):
             ax[i, j].set_ylim(0, y_lim)
 
+
 def double_y_ticks(ax):
     for i in range(ax.shape[0]):
         for j in range(ax.shape[1]):
             # Get current number of ticks and double it
-            current_ticks = ax[i, j].yaxis.get_major_locator().nbins if hasattr(ax[i, j].yaxis.get_major_locator(), 'nbins') else 5
-            ax[i, j].yaxis.set_major_locator(MaxNLocator(nbins=current_ticks, integer=True, prune=None, steps=[1, 2, 5, 10]))
+            current_ticks = (
+                ax[i, j].yaxis.get_major_locator().nbins
+                if hasattr(ax[i, j].yaxis.get_major_locator(), "nbins")
+                else 5
+            )
+            ax[i, j].yaxis.set_major_locator(
+                MaxNLocator(
+                    nbins=current_ticks, integer=True, prune=None, steps=[1, 2, 5, 10]
+                )
+            )
 
 
-def per_column_countplot(data, columns, feature, hue, figsize=(14, 14), normalize_rows=True):
+def per_column_countplot(
+    data, columns, feature, hue, figsize=(14, 14), normalize_rows=True
+):
     """
     Generate a count plot for each column in 'columns' against the specified 'feature'.
     """
     feat_cols = data[feature].dropna().unique()
 
-
     fig, ax = plt.subplots(len(columns), len(feat_cols), figsize=figsize, sharey=False)
     plt.subplots_adjust(wspace=0.10, hspace=0.10)
-
 
     for i, cat1 in enumerate(columns):
         for j, cat2 in enumerate(feat_cols):
 
             subset = data[data[feature] == cat2]
-            sns.countplot(
-                data=subset,
-                x=cat1,
-                hue=hue,
-                ax=ax[i, j]
-            )
+            sns.countplot(data=subset, x=cat1, hue=hue, ax=ax[i, j])
 
-
-            
             ax[i, j].set_title(None)
             ax[i, j].legend_.remove()
             ax[i, j].set_xlabel(None)
@@ -116,76 +116,91 @@ def per_column_countplot(data, columns, feature, hue, figsize=(14, 14), normaliz
             # Rotate x-tick labels if any label is longer than 10 characters
             xticklabels = [tick.get_text() for tick in ax[i, j].get_xticklabels()]
             if any(len(label) > 10 for label in xticklabels):
-                ax[i, j].tick_params(axis='x', rotation=10)
+                ax[i, j].tick_params(axis="x", rotation=10)
 
-                
     if normalize_rows:
         normalize_row_ylim(ax)
     double_y_ticks(ax)
 
-
-
     for i, col in enumerate(columns):
-        ax[i, 0].set_ylabel(col, fontweight='bold')
+        ax[i, 0].set_ylabel(col, fontweight="bold")
 
-   # if any(len(col) > 10 for col in columns):
+    # if any(len(col) > 10 for col in columns):
     #    for i, col in enumerate(columns):
-     #       ax[i, 0].set_ylabel(col, fontweight='bold', rotation=80)
+    #       ax[i, 0].set_ylabel(col, fontweight='bold', rotation=80)
 
-  
-    
-    
-
-        #ax[-1, i].set_xlabel(feature)
+    # ax[-1, i].set_xlabel(feature)
     for i, col in enumerate(feat_cols):
-        ax[-1, i].set_xlabel(f'{feature} = {col}', fontweight='bold')
+        ax[-1, i].set_xlabel(f"{feature} = {col}", fontweight="bold")
 
-    plt.suptitle(f"Count plot of {feature} vs [{', '.join(columns)}]", fontsize=16, fontweight='bold')
+    plt.suptitle(
+        f"Count plot of {feature} vs [{', '.join(columns)}]",
+        fontsize=16,
+        fontweight="bold",
+    )
     plt.tight_layout()
 
     # Add a single legend to the right of all subplots
     handles, labels = ax[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, title=hue, loc='center left', bbox_to_anchor=(1.00, 0.7))
+    fig.legend(
+        handles, labels, title=hue, loc="center left", bbox_to_anchor=(1.00, 0.7)
+    )
     return fig
 
 
 from typing import Literal
-def corr_triangle(data, method:Literal['pearson', 'spearman'] = 'pearson', response_var=None, figsize=(12, 8)):
+
+
+
+
+
+def corr_triangle(
+    data,
+    method: Literal["pearson", "spearman"] = "pearson",
+    response_var=None,
+    annotate: bool = True,
+    figsize=(12, 8),
+)    -> None:
     """plots a triangular correlation matrix"""
     if response_var is not None:
-        data = data[[col for col in data.columns if col != response_var]+[response_var]]
-    
-    fig = plt.figure(figsize=figsize)
+        data = data[
+            [col for col in data.columns if col != response_var] + [response_var]
+        ]
+
     corr = data.corr(numeric_only=True, method=method)
     mask = np.triu(np.ones_like(corr, dtype=bool))
+
+    plt.figure(figsize=figsize)
+
     sns.heatmap(
-        corr, 
-        annot=True, 
-        cmap='coolwarm', 
-        fmt=".2f", 
-        linewidths=0.5, 
-        mask=mask, 
+        corr,
+        fmt=".2f",
+        annot=annotate,
+        square=~annotate,
+        cmap="coolwarm",
+        mask=mask,
         center=0,
         vmax=1,
         vmin=-1,
     )
     plt.grid(False)
-    plt.title('Pearson Correlation Heatmap')
- 
+    plt.title("Pearson Correlation Heatmap")
+    #plt.tight_layout()
+
+    return corr
 
 
-
-def count_lineplot(data, x, hue, ax=None, title = None, **kwargs):
+def count_lineplot(data, x, hue, ax=None, title=None, **kwargs):
     if ax is None:
         fig, ax = plt.subplots()
     if title:
         ax.set_title(title)
 
     # Group and count
-    counts = data.groupby([x, hue]).size().reset_index(name='count')
+    counts = data.groupby([x, hue]).size().reset_index(name="count")
 
     # Pivot for plotting
-    pivot_df = counts.pivot(index=x, columns=hue, values='count').fillna(0).sort_index()
+    pivot_df = counts.pivot(index=x, columns=hue, values="count").fillna(0).sort_index()
 
     # Plot each hue line separately
     for col in pivot_df.columns:
@@ -197,7 +212,7 @@ def count_lineplot(data, x, hue, ax=None, title = None, **kwargs):
             label=str(col),
             marker="X",  # fixed marker argument
             markersize=13,  # fixed markersize argument
-            **kwargs
+            **kwargs,
         )
 
     ax.set_xlabel(x)

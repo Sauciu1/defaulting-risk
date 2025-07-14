@@ -5,11 +5,16 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 from matplotlib.patches import Patch
 
 
-def calculate_vif(data, columns):
+def calculate_vif(data, columns=None):
     """Calculates Variance Inflation Factor (VIF) for the given columns in a DataFrame."""
 
     assert isinstance(data, pd.DataFrame), "Data should be a pandas DataFrame"
-    assert all(col in data.columns for col in columns), "missing columns in data"
+    if columns:
+        assert all(col in data.columns for col in columns), "missing columns in data"
+    else:
+        columns = data.select_dtypes(include=[float, int]).columns.tolist()
+        assert columns, "No numeric columns found in the DataFrame"
+
     data = data[columns].copy().dropna(axis=0)
     assert all(data[col].dtype in [float, int] for col in columns), "All columns must be of type float or int"
 
@@ -20,10 +25,13 @@ def calculate_vif(data, columns):
     return vif_data.sort_values(by="VIF", ascending=False).reset_index(drop=True)
 
 
-def plot_vif(data, columns, figsize=(10, 6)):
+def plot_vif(data, columns=None, figsize=(10, 6), top_n=10):
     """Calculates and plots Variance Inflation Factor (VIF) for the given columns."""
     vif_data = calculate_vif(data, columns)
 
+    if top_n:
+        vif_data = vif_data.head(top_n)
+        
     plt.figure(figsize=figsize)
     sns.barplot(
         x="VIF",
@@ -32,6 +40,9 @@ def plot_vif(data, columns, figsize=(10, 6)):
         #palette="viridis",
     )
     colors = vif_data["VIF"].apply(lambda x: "green" if x < 3 else ("yellow" if x < 10 else "red"))
+
+
+
     for bar, color in zip(plt.gca().patches, colors):
         bar.set_color(color)
     plt.xlabel("VIF")

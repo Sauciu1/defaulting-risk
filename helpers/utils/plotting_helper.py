@@ -1,3 +1,4 @@
+from IPython.core.pylabtools import figsize
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
@@ -154,12 +155,12 @@ from typing import Literal
 
 
 
-def corr_triangle(
+def plot_corr_triangle(
     data,
     method: Literal["pearson", "spearman"] = "pearson",
     response_var=None,
-    annotate: bool = True,
-    figsize=(12, 8),
+    figsize = None,
+    heatmap_kws={"annot":False, "fmt": ".2f", "square": True, "ax":None},
 )    -> None:
     """plots a triangular correlation matrix"""
     if response_var is not None:
@@ -170,22 +171,37 @@ def corr_triangle(
     corr = data.corr(numeric_only=True, method=method)
     mask = np.triu(np.ones_like(corr, dtype=bool))
 
-    plt.figure(figsize=figsize)
+    if heatmap_kws.get("ax", None):
+        ax = heatmap_kws["ax"]
+        ax.grid(False)
+        figsize = None
+    elif figsize:
+        plt.figure(figsize=figsize)
+
+
 
     sns.heatmap(
         corr,
-        fmt=".2f",
-        annot=annotate,
-        square=~annotate,
         cmap="coolwarm",
         mask=mask,
         center=0,
         vmax=1,
         vmin=-1,
+        **heatmap_kws
     )
     plt.grid(False)
-    plt.title("Pearson Correlation Heatmap")
-    #plt.tight_layout()
+
+    # Center the colorbar if present
+    ax = plt.gca()
+    cbar = ax.collections[0].colorbar if ax.collections else None
+    if cbar:
+        cbar.ax.set_position([0.78, 0.1, 0.03, 0.7])  # adjust as needed to center
+        cbar.ax.set_title("Correlation", fontsize=12, fontweight="bold")
+    
+    plt.title(f"{method} Correlation Heatmap".title())
+
+
+    #plt.grid(False)
 
     return corr
 

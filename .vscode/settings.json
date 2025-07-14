@@ -3,6 +3,7 @@
     "editor.semanticHighlighting.enabled": true,
     "python.languageServer": "Pylance",
     "cSpell.words": [
+        "Crossvalidation",
         "preanalysed"
     ],
 }

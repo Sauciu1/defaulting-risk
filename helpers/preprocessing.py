@@ -166,6 +166,23 @@ class Preprocessor:
 
         return result
 
+    def get_X_y_id(self, target_column: str = "TARGET", id_column: str = "SK_ID_CURR") -> tuple[pd.DataFrame, pd.Series, pd.Series]:
+        """Get features and target variable from the DataFrame."""
+
+
+        X = self.get_expected_df()
+        if target_column in X.columns:
+            X = X.drop(columns=[target_column])
+        if id_column in X.columns:
+            X = X.drop(columns=[id_column])
+
+        y = self.data[target_column] if target_column in self.data.columns else None
+        id = self.data[id_column] if id_column in self.data.columns else None
+
+        print(f"X shape: {X.shape}, y shape: {y.shape if y is not None else 'None'}, id shape: {id.shape if id is not None else 'None'}")
+
+        return X, y, id
+
     def check_conversion_success(self) -> pd.DataFrame | None:
         """Check if the DataFrame has the expected columns after conversion."""
         type_checks = {

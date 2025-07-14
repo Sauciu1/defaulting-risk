@@ -109,3 +109,75 @@ def plot_ordered_metrics(data, title, figsize=(10, 12)):
 
 
     plt.legend(title='Metric Comparison', loc='upper left', bbox_to_anchor=(1.05, 1))
+
+
+def wilcoxon_test_within_cluster(data, features, cluster_label_col, target_col, correction = 'Bonferroni') -> pd.DataFrame:
+    results = pd.DataFrame(index=features, columns=np.unique(data[cluster_label_col]))
+
+    for feature in features:
+        for label in data[cluster_label_col].unique():
+            cluster_data = data[data[cluster_label_col] == label]
+            groups = [
+                cluster_data[cluster_data[target_col] == True][feature].dropna(),
+                cluster_data[cluster_data[target_col] == False][feature].dropna()
+            ]
+            
+            # Perform Wilcoxon rank-sum test between TARGET=True and TARGET=False within the cluster
+            if len(groups[0]) > 0 and len(groups[1]) > 0:  # Ensure both groups have data
+                _, p_value = stats.ranksums(groups[0], groups[1])
+                results.loc[feature, label] = p_value
+
+    results = results.astype(float)
+    if correction == 'Bonferroni':
+        results *= len(features) * len(data[cluster_label_col].unique())
+        print("Bonferroni correction applied.")
+    results = results.clip(upper=1)
+
+    print('Corrected p-values for Wilcoxon test within clusters:')
+    return results
+
+import matplotlib.colors as mcolors
+def heatmap_wilcoxon_cluster_results(wilcoxon_results, title="Wilcoxon Test Results Heatmap"):
+    plt.figure(figsize=(12, 8))
+
+
+    sns.heatmap(
+        wilcoxon_results.astype(float),  # Ensure the data is numeric for heatmap
+        annot=True,
+        fmt=".1e",
+        cbar_kws={"label": "p-value (log scale)"},
+        vmax=0.05,
+        norm=mcolors.LogNorm()
+    )
+    plt.title(title)
+    plt.xlabel("Cluster Label")
+    plt.ylabel("Feature")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+
+
+def kruskal_wallis_test(data: pd.DataFrame, features: list, group_column: str, 
+                       bonferroni_correction: bool = True) -> pd.DataFrame:
+    """
+    Perform Kruskal-Wallis test for multiple features across groups.
+    """
+    kruskal_results = {}
+    
+    for feature in features:
+        groups = [
+            group[feature].dropna()
+            for name, group in data.groupby(group_column, observed=True)
+        ]
+        
+        stat, p_value = stats.kruskal(*groups)
+        
+        # Apply Bonferroni correction if requested
+        corrected_p_value = p_value * len(features) if bonferroni_correction else p_value
+        
+        kruskal_results[feature] = {
+            "statistic": stat,
+            "p_value": corrected_p_value,
+            "raw_p_value": p_value if bonferroni_correction else None
+        }
+    
+    return pd.DataFrame.from_dict(kruskal_results, orient="index")

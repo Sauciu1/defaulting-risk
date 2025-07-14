@@ -6,7 +6,7 @@ def neighbourhood_feature_selection(
     housing_columns: list[str],
     wilc_results: pd.DataFrame,
 ) -> pd.DataFrame:
-    
+    X = X.copy()
 
     X["Cluster_Label"] = pd.Categorical(labels)
 

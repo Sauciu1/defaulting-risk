@@ -154,10 +154,10 @@ class Preprocessor:
         unexpected_columns = set(self.data.columns) - set(self._get_provided_columns())
         return list(unexpected_columns)
 
-    def get_expected_df(self) -> pd.DataFrame:
+    def get_expected_df(self, include_extra:list[str]=None) -> pd.DataFrame:
         """Get a DataFrame with only the expected columns."""
         expected_columns = self._get_provided_columns()
-        result = self.data[expected_columns]
+        result = self.data[expected_columns+ (include_extra or [])].copy()
         if result.empty:
             raise ValueError(
                 "No expected columns found in the DataFrame. "

@@ -107,7 +107,7 @@ class Preprocessor:
 
         self.categorical_type = type
         if type == "object":
-            self.data = convert_to_object(self.data, self.num_columns)
+            self.data = convert_to_object(self.data, self.cat_columns)
         elif type == "category":
             self.data = convert_to_category(self.data, self.cat_columns)
         elif type is None:
@@ -115,7 +115,6 @@ class Preprocessor:
         else:
             raise ValueError(f"Unsupported type: {type}. Use 'object' or 'category'.")
 
-        self.data = convert_bool_to_bool(self.data, self.bool_columns)
 
         self.check_columns()
         return self.data

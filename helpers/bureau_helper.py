@@ -17,24 +17,26 @@ def encode_agg_bureau_balance(
 
     df = data.sort_values(["SK_ID_BUREAU", "MONTHS_BALANCE"]).reset_index(drop=True)
 
-    if X_y_split:
-        include_end_month = False
 
+    # Add target columns for forecasting
     for i in range(forecast):
         df[f"t_{i}"] = df.groupby("SK_ID_BUREAU")["STATUS"].shift(-i)
 
+    # Include first forecasted month in the features
     if include_end_month:
         df["first_pred_month"] = df["MONTHS_BALANCE"]
 
+    # Create features for the past 'lookback' months
     for i in range(lookback):
         df[f"f_{i}"] = df.groupby("SK_ID_BUREAU")["STATUS"].shift(-i + lookback)
 
     df.drop(columns="STATUS", inplace=True)
     df = df[sorted(df.columns)]
 
-    if forecast != 0:
-        target_cols = [f"t_{i}" for i in range(forecast)]
-        df = df.dropna(subset=target_cols)
+    # Remove rows with NaN in target columns
+    target_cols = [f"t_{i}" for i in range(forecast)]
+    df = df.dropna(subset=target_cols)
+
 
     if X_y_split:
         if test:

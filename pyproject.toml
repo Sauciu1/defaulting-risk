@@ -17,7 +17,12 @@ dependencies = [
     "matplotlib (>=3.10.3,<4.0.0)",
     "statsmodels (>=0.14.4,<0.15.0)",
     "lightgbm (>=4.6.0,<5.0.0)",
-    "hdbscan (>=0.8.40,<0.9.0)"
+    "hdbscan (>=0.8.40,<0.9.0)",
+    "cuda-python (>=12.9.0,<13.0.0)",
+    "keras (>=3.10.0,<4.0.0)",
+    "networkx (>=3.5,<4.0)",
+    "shap (>=0.48.0,<0.49.0)",
+    "ipywidgets (>=8.1.7,<9.0.0)"
 ]
 
 [tool.poetry]

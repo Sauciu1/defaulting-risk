@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
-from helpers.utils import plotting_helper
+from .utils import plotting_helper
 
 
 def call_plotter_for_suffix(df, suffix, ax) -> None:

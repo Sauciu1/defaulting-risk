@@ -10,10 +10,10 @@ def evaluate_multiclass_model(y_true, y_pred, columns=None):
     cm = pd.DataFrame(confusion_matrix(y_true, y_pred), index=columns, columns=columns)
 
     sns.heatmap(cm.div(cm.sum(axis=1), axis=0), annot=True, fmt='.2f')
-    plt.title('Confusion Matrix Normalized for True State')
+    plt.title('Confusion Matrix Normalized for True State', fontsize=14)
     plt.xlabel('Predicted State')
     plt.ylabel('True State')
-    plt.show()
+    plt.tight_layout()
 
 def save_or_load_model(model, X_train, y_train, filename, folder ='models'):
     """

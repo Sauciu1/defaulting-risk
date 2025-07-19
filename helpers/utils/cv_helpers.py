@@ -7,12 +7,14 @@ from sklearn.metrics import classification_report
 from sklearn.model_selection import cross_val_predict
 from sklearn.metrics import roc_auc_score
 from sklearn.pipeline import Pipeline
-import joblib
-import os
-from IPython.display import display
-plt.style.use('fivethirtyeight')
+
+
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import PrecisionRecallDisplay
+from . import sklearn_helper
+
+plt.style.use('fivethirtyeight')
+
 
 def get_metrics(y, y_pred):
     """Calculate accuracy, recall, precision, and F1 score for a given model and dataset."""
@@ -108,8 +110,6 @@ def find_non_transformer_step_index(pipeline: Pipeline):
                 return idx
     raise ValueError("No non-transformer steps found in the pipeline.")
 
-
-from scripts.utils import sklearn_helper
 
 def model_curves(models, X, y, cv=5, figsize = (10, 5)):
     "Draws ROC and Precision-Recall curves for multiple models using cross-validation."

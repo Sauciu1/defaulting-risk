@@ -14,6 +14,8 @@ def set_plot_style():
     plt.style.use("fivethirtyeight")
 
 
+
+
 def quantile_pair_grid(
     data: pd.DataFrame,
     columns: list[str],

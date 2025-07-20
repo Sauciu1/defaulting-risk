@@ -11,7 +11,8 @@ from . import (
     shap_helper,
     sklearn_helper,
     stats_helper,
-    vif_helper
+    vif_helper,
+    plotting_helper
 )
 
-
+plotting_helper.set_plot_style()

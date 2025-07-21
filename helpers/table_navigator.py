@@ -52,21 +52,24 @@ class ColumnDescriber:
         """
         Returns a DataFrame with the meanings and statistics of the columns.
         """
+        
         if not isinstance(columns, list):
             if isinstance(columns, str):
                 columns = [columns]
             else:
                 raise ValueError("The 'columns' parameter must be a list of column names.")
 
+        
         desc = self.descriptions.copy()
         df = desc[(desc.Row.isin(columns)) & (desc.Table.isin(self.only_tables))].copy()
-
+        print("from tables: ", df['Table'].unique())
+        
         stats = df.apply(self._get_col_stats, axis=1)
         df['nan_n'] = stats.apply(lambda x: x['nan_count'])
         df['unique_vals'] = stats.apply(lambda x: x['unique_values'])
         df['dtype'] = stats.apply(lambda x: x['dtype'])
         df['sample_vals'] = stats.apply(lambda x: x['sample_values'])
-
+        df.drop(columns=['Table'], inplace=True, errors='ignore')
 
         return df
 

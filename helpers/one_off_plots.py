@@ -18,8 +18,9 @@ def call_plotter_for_suffix(df, suffix, ax) -> None:
         df,
         method="pearson",
         response_var=None,
-
-        heatmap_kws={"annot": False, "square": True, "ax": ax},
+        annot=False,
+        square=True,
+        ax=ax,
     )
 
     # ax.set_yticklabels([])

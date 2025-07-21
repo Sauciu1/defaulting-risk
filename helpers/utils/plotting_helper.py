@@ -6,13 +6,78 @@ import numpy as np
 import os
 from IPython.display import Image, display
 from matplotlib.ticker import MaxNLocator
-
+import plotly.io as pio
+from plotly import graph_objects as go
 
 def set_plot_style():
+    # Matplotlib style
     plt.rcParams["axes.titleweight"] = "bold"
     plt.rcParams["axes.titlesize"] = 15
     plt.style.use("fivethirtyeight")
+    # Plotly style
+    pio.templates['five38'] = five38
+    pio.templates.default = 'five38'
 
+
+
+five38 = go.layout.Template(
+    layout=go.Layout(
+        # 538’s background color
+        paper_bgcolor='#F0F0F0',
+        plot_bgcolor='#F0F0F0',
+        
+        # Their color palette (modify/add as needed)
+        colorway=[
+            '#b00000',  # dark red
+            '#30a2da',  # blue
+            
+            '#e5ae38',  # yellow
+            '#fc4f30',  # red
+            '#6d904f',  # green
+            '#8b8b8b',  # gray
+            
+        ],
+        
+        # Font styling
+        font=dict(
+            family='Arial, sans-serif',
+            size=14,
+            color='#2d2d2d',
+        ),
+        
+        # Title styling (left‑aligned)
+        title=dict(
+            x=0.5,
+            y=0.98,
+            xanchor='center',
+            font=dict(family='Arial, sans-serif', size=20, color='#000000', weight='bold'),
+        ),
+        
+        # Legend sits on same gray, no border
+        legend=dict(
+            bgcolor='#F0F0F0',
+            bordercolor="#C0C0C0",
+            font=dict(
+            size=15,
+            color='#000000',
+   
+            ),
+        ),
+        # Axes: white gridlines, no zero lines
+        xaxis=dict(
+            showgrid=True,
+            gridcolor='white',
+            zeroline=False,
+            linecolor='black',
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor='white',
+            zeroline=False,
+            linecolor='black',
+        ),
+    )
+)
 
 
 
@@ -161,9 +226,9 @@ def plot_corr_triangle(
     data,
     method: Literal["pearson", "spearman"] = "pearson",
     response_var=None,
-    figsize = None,
-    heatmap_kws={"annot":False, "fmt": ".2f", "square": True, "ax":None},
-)    -> None:
+    figsize=None,
+    **heatmap_kws,
+) -> None:
     """plots a triangular correlation matrix"""
     if response_var is not None:
         data = data[
@@ -173,14 +238,12 @@ def plot_corr_triangle(
     corr = data.corr(numeric_only=True, method=method)
     mask = np.triu(np.ones_like(corr, dtype=bool))
 
-    if heatmap_kws.get("ax", None):
-        ax = heatmap_kws["ax"]
+    ax = heatmap_kws.get("ax", None)
+    if ax is not None:
         ax.grid(False)
         figsize = None
     elif figsize:
         plt.figure(figsize=figsize)
-
-
 
     sns.heatmap(
         corr,
@@ -189,6 +252,7 @@ def plot_corr_triangle(
         center=0,
         vmax=1,
         vmin=-1,
+        fmt =".2f",
         **heatmap_kws
     )
     plt.grid(False)
@@ -201,9 +265,6 @@ def plot_corr_triangle(
         cbar.ax.set_title("Correlation", fontsize=12, fontweight="bold")
     
     plt.title(f"{method} Correlation Heatmap".title())
-
-
-    #plt.grid(False)
 
     return corr
 

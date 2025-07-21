@@ -54,7 +54,12 @@ def get_outlier_bounds(series, factor=1.5):
 
     return low, high
 
-def plot_numeric_dist(data, feature, hue = None, title=None, show= True):
+def plot_numeric_dist(data, feature, hue=None, title=None, show=True):
+
+
+    if isinstance(data, pd.Series):
+        data = data.to_frame()
+
     data = data.copy()
     plt.figure(figsize=(8, 3))
     

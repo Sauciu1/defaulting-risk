@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
+from .stats_helper import clip_IQR_outliers
 
 
 def pca_3d(data) -> tuple[PCA, np.ndarray]:
@@ -45,6 +46,15 @@ def plotly_3d_pca(
     if hue_col is not None:
         fig.update_layout(legend_title_text=hue_col.name)
 
+        # Add percentage of all values to each hue col name in legend
+        value_counts = hue_col.value_counts(normalize=True)
+        new_names = {
+            str(val): f"{val} ({value_counts[val]:.1%})" for val in value_counts.index
+        }
+        fig.for_each_trace(
+            lambda trace: trace.update(name=new_names.get(trace.name, trace.name))
+        )
+
     fig.update_traces(marker=dict(size=2))
     fig.update_layout(width=figsize[0], height=figsize[1])
     fig.update_layout(
@@ -53,7 +63,10 @@ def plotly_3d_pca(
         legend=dict(
             itemsizing="constant",
         ),
-        #scene=dict(domain=dict(x=[0.1, 0.9], y=[0.1, 1])),
+        # scene=dict(domain=dict(x=[0.1, 0.9], y=[0.1, 1])),
     )
 
     return fig
+
+
+

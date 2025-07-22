@@ -7,6 +7,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 import seaborn as sns
+from sklearn.preprocessing import MinMaxScaler
+from typing import Literal
 
 
 def perform_mann_whitney(data, feature, hue = "Transported", alpha = 0.01):
@@ -111,6 +113,71 @@ def plot_ordered_metrics(data, title, figsize=(10, 12)):
     plt.legend(title='Metric Comparison', loc='upper left', bbox_to_anchor=(1.05, 1))
 
 
+def bonferroni_correction(p_values, alpha=0.05):
+    """
+    Apply Bonferroni correction to p-values.
+    """
+    corrected = p_values * len(p_values)
+    return corrected.clip(upper=1)
+
+
+def clip_IQR_outliers(X: pd.DataFrame, quantile: float = 0.25, multiplier: float = 1.5):
+    """
+    Clip outliers based on the IQR method.
+    """
+    Q1 = X.quantile(quantile)
+    Q3 = X.quantile(1 - quantile)
+    IQR = Q3 - Q1
+    lower_bound = Q1 - multiplier * IQR
+    upper_bound = Q3 + multiplier * IQR
+
+    return X.clip(lower=lower_bound, upper=upper_bound, axis=1)
+
+
+def kruskal_wallis_cluster_separation(data, cluster_label_col, correction='Bonferroni'):
+    """
+    Performs Kruskal–Wallis H‑test for independent samples for each feature in the data,
+    comparing the distribution of values across different clusters defined by cluster_label_col.
+    """
+    features = data.select_dtypes(include=[np.number]).columns
+    results = pd.DataFrame(index=features)
+
+    for feature in features:
+        # Perform Kruskal-Wallis test for the feature across groups defined by cluster_label_col
+        groups = [
+            data[data[cluster_label_col] == label][feature].dropna()
+            for label in data[cluster_label_col].unique()
+        ]
+        groups = [group for group in groups if len(group) > 0]  # Filter out empty groups
+        try:
+            _, p_value = stats.kruskal(*groups)
+        except ValueError as e:
+            if "All numbers are identical" in str(e):
+                p_value = 1
+            else:
+                raise
+
+        # Store the p-value for this feature (could use the first label as column, or create a summary column)
+        results.loc[feature, 'p_value'] = p_value
+        # Store the median for each group
+        for idx, label in enumerate(data[cluster_label_col].unique()):
+            if len(groups[idx]) > 0:
+                results.loc[feature, f"{label}_median"] = groups[idx].median()
+            else:
+                results.loc[feature, f"{label}_median"] = np.nan
+
+    results = results.astype(float)
+
+
+    if correction == 'Bonferroni':
+        results = bonferroni_correction(results)
+    results = results.clip(upper=1)
+
+    print('Corrected p-values for Wilcoxon test within clusters:')
+    return results
+
+
+
 def wilcoxon_test_within_cluster(data, features, cluster_label_col, target_col, correction = 'Bonferroni') -> pd.DataFrame:
     results = pd.DataFrame(index=features, columns=np.unique(data[cluster_label_col]))
 
@@ -129,8 +196,7 @@ def wilcoxon_test_within_cluster(data, features, cluster_label_col, target_col, 
 
     results = results.astype(float)
     if correction == 'Bonferroni':
-        results *= len(features) * len(data[cluster_label_col].unique())
-        print("Bonferroni correction applied.")
+        results = bonferroni_correction(results)
     results = results.clip(upper=1)
 
     print('Corrected p-values for Wilcoxon test within clusters:')
@@ -181,3 +247,59 @@ def kruskal_wallis_test(data: pd.DataFrame, features: list, group_column: str,
         }
     
     return pd.DataFrame.from_dict(kruskal_results, orient="index")
+
+
+
+def plot_kruskal_results(data: pd.DataFrame, cluster_label_col: str, correction: Literal['Bonferroni']='Bonferroni', figsize = (12, 8)):
+    data = data.copy()
+    kruskal_result = kruskal_wallis_cluster_separation(
+        data=data,
+        cluster_label_col=cluster_label_col,
+        correction=correction
+    )
+
+    # Get numeric columns and scale them
+    numeric_cols = data.select_dtypes(include=[np.number]).columns
+
+    #Clip ourliers for visualisation
+    X_scaled = data[numeric_cols].copy()
+    X_scaled = clip_IQR_outliers(data[numeric_cols], quantile=0.003, multiplier=2)
+
+    X_scaled = pd.DataFrame(
+        MinMaxScaler().fit_transform(X_scaled), 
+        columns=numeric_cols,
+        index=data.index
+    )
+
+
+    # Add cluster labels to scaled data
+    X_scaled[cluster_label_col] = data[cluster_label_col].values
+
+    # Melt the dataframe for plotting
+    scaled_df = pd.melt(
+        X_scaled, 
+        id_vars=[cluster_label_col], 
+        value_vars=numeric_cols,
+        var_name='feature', 
+        value_name='value'
+    )
+
+
+    # Create the boxplot
+    plt.figure(figsize=figsize)
+    sns.boxplot(data=scaled_df, y='feature', hue=cluster_label_col, x='value', orient='h')
+    plt.title('Feature Distribution by Cluster')
+    plt.tight_layout()
+    plt.xlabel('Scaled (0-1) Feature Value')
+    plt.legend(bbox_to_anchor=(1.05, 1.05), loc='upper left')
+
+
+
+    # Add p-value annotations to the plot
+    for i, (feature, p_val) in enumerate(kruskal_result['p_value'].items()):
+        if not pd.isna(p_val):
+            plt.text(0.96, i, f'p={p_val:.3f}', transform=plt.gca().get_yaxis_transform(), 
+                    ha='left', va='center', fontsize=10, bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8))
+
+    
+    return kruskal_result

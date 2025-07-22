@@ -95,12 +95,17 @@ class Preprocessor:
         self.bool_columns = column_list_adapter(bool_columns)
         self.str_columns = column_list_adapter(str_columns)
 
+        if "SK_ID_CURR" in self.data.columns:
+            self.data['SK_ID_CURR'] = self.data['SK_ID_CURR'].astype(str)
+
         self.categorical_type: Literal["object", "category"] = None
 
         self.column_structure = None
 
     def convert_all(self, type: Literal["object", "category"] = None) -> pd.DataFrame:
         self.data = convert_bool_to_bool(self.data, self.bool_columns)
+
+        
 
         if type is None:
             type = self.categorical_type

@@ -9,6 +9,7 @@ pd.set_option("future.no_silent_downcasting", True)
 
 
 def column_list_adapter(columns: list[str] | set[str]) -> list[str]:
+    """Convert various types of column inputs to a list of strings."""
     if isinstance(columns, str):
         return [columns]
     elif isinstance(columns, set):
@@ -96,7 +97,7 @@ class Preprocessor:
         self.str_columns = column_list_adapter(str_columns)
 
         if "SK_ID_CURR" in self.data.columns:
-            self.data['SK_ID_CURR'] = self.data['SK_ID_CURR'].astype(str)
+            self.data["SK_ID_CURR"] = self.data["SK_ID_CURR"].astype(str)
 
         self.categorical_type: Literal["object", "category"] = None
 
@@ -104,8 +105,6 @@ class Preprocessor:
 
     def convert_all(self, type: Literal["object", "category"] = None) -> pd.DataFrame:
         self.data = convert_bool_to_bool(self.data, self.bool_columns)
-
-        
 
         if type is None:
             type = self.categorical_type
@@ -119,7 +118,6 @@ class Preprocessor:
             pass
         else:
             raise ValueError(f"Unsupported type: {type}. Use 'object' or 'category'.")
-
 
         self.check_columns()
         return self.data
@@ -158,10 +156,10 @@ class Preprocessor:
         unexpected_columns = set(self.data.columns) - set(self._get_provided_columns())
         return list(unexpected_columns)
 
-    def get_expected_df(self, include_extra:list[str]=None) -> pd.DataFrame:
+    def get_expected_df(self, include_extra: list[str] = None) -> pd.DataFrame:
         """Get a DataFrame with only the expected columns."""
         expected_columns = self._get_provided_columns()
-        result = self.data[expected_columns+ (include_extra or [])].copy()
+        result = self.data[expected_columns + (include_extra or [])].copy()
         if result.empty:
             raise ValueError(
                 "No expected columns found in the DataFrame. "
@@ -170,9 +168,10 @@ class Preprocessor:
 
         return result
 
-    def get_X_y_id(self, target_column: str = "TARGET", id_column: str = "SK_ID_CURR") -> tuple[pd.DataFrame, pd.Series, pd.Series]:
+    def get_X_y_id(
+        self, target_column: str = "TARGET", id_column: str = "SK_ID_CURR"
+    ) -> tuple[pd.DataFrame, pd.Series, pd.Series]:
         """Get features and target variable from the DataFrame."""
-
 
         X = self.get_expected_df()
         if target_column in X.columns:
@@ -183,7 +182,9 @@ class Preprocessor:
         y = self.data[target_column] if target_column in self.data.columns else None
         id = self.data[id_column] if id_column in self.data.columns else None
 
-        print(f"X shape: {X.shape}, y shape: {y.shape if y is not None else 'None'}, id shape: {id.shape if id is not None else 'None'}")
+        print(
+            f"X shape: {X.shape}, y shape: {y.shape if y is not None else 'None'}, id shape: {id.shape if id is not None else 'None'}"
+        )
 
         return X, y, id
 
@@ -245,15 +246,7 @@ def load_pkl_to_preprocessor(
 
     if table in ["application_train", "application_test"]:
         with open("data/processed/application_columns.pkl", "rb") as f:
-            columns = pickle.load(f)
-
-        cat_columns = column_list_adapter(columns["cat_columns"])
-        num_columns = column_list_adapter(columns["num_columns"])
-        bool_columns = column_list_adapter(columns["bool_columns"])
-        str_columns = column_list_adapter(columns["str_columns"])
-
-        if table == "application_test":
-            bool_columns.remove("TARGET")
+            pkl_columns = pickle.load(f)
 
     elif table in [
         "bureau",
@@ -264,52 +257,37 @@ def load_pkl_to_preprocessor(
         "installments_payments",
     ]:
         with open(f"data/processed/supplementary_tables_columns.pkl", "rb") as f:
-            columns = pickle.load(f)
-
-        cat_columns = [
-            col
-            for col in column_list_adapter(columns["cat_columns"])
-            if col in df.columns
-        ]
-        num_columns = [
-            col
-            for col in column_list_adapter(columns["num_columns"])
-            if col in df.columns
-        ]
-        bool_columns = [
-            col
-            for col in column_list_adapter(columns["bool_columns"])
-            if col in df.columns
-        ]
-        str_columns = [
-            col
-            for col in column_list_adapter(columns["str_columns"])
-            if col in df.columns
-        ]
-
+            pkl_columns = pickle.load(f)
     else:
         raise ValueError(f"Unsupported table: {table}.")
 
+    col_types = ["cat_columns", "num_columns", "bool_columns", "str_columns"]
+
+    columns = {
+        col_type: column_list_adapter(
+            [col for col in pkl_columns[col_type] if col in df.columns]
+        )
+        for col_type in col_types
+    }
+
+
     preprocessor = Preprocessor(
         data=df,
-        cat_columns=cat_columns,
-        num_columns=num_columns,
-        bool_columns=bool_columns,
-        str_columns=str_columns,
+        cat_columns=columns["cat_columns"],
+        num_columns=columns["num_columns"],
+        bool_columns=columns["bool_columns"],
+        str_columns=columns["str_columns"],
     )
 
-
-    #Set column structure
     if table in ["application_train", "application_test"]:
-        structure = columns["application_columns"]
+        structure = pkl_columns["application_columns"]
     else:
-        print(columns["tables_columns"].keys())
-        structure = columns["tables_columns"][table.lower()]
+        print(pkl_columns["tables_columns"].keys())
+        structure = pkl_columns["tables_columns"][table.lower()]
 
     if type(structure) is dict:
         preprocessor.column_structure = {
-            key: column_list_adapter(value)
-            for key, value in structure.items()
+            key: column_list_adapter(value) for key, value in structure.items()
         }
     elif type(structure) is list:
         preprocessor.column_structure = column_list_adapter(structure)

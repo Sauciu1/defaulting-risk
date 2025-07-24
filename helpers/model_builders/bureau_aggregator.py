@@ -3,12 +3,15 @@ import numpy as np
 
 
 
+
 def simplify_credit_active(df: pd.DataFrame) -> pd.DataFrame:
     """
     Simplify the CREDIT_ACTIVE column to only include 'Active', 'Closed', and 'Sold'.
     """
     df = df.copy()
-    df.loc[df["CREDIT_ACTIVE"].isin(["Bad debt", "Sold"]), "CREDIT_ACTIVE"] = "Sold"
+    df["CREDIT_ACTIVE"] = df["CREDIT_ACTIVE"].astype("category").cat.set_categories(['Active', 'Closed', 'Other'])
+    df.loc[~df["CREDIT_ACTIVE"].isin(['Active', 'Closed']), "CREDIT_ACTIVE"] = "Other"
+    
 
     
 
@@ -27,63 +30,71 @@ class BureauAggregator:
     Output data can be used for scale-independent models
     """
 
-    def __init__(self, bureau_df: pd.DataFrame) -> None:
+    def __init__(self, bureau_df: pd.DataFrame, stack_columns =["SK_ID_CURR", "CREDIT_ACTIVE"]) -> None:
         df = bureau_df.copy()
         df = simplify_credit_active(df)
         self.bureau_df = choose_currency(df, "currency 1")
-        self.grouped = self.groupby_id_and_status()
+        self.stack_columns = stack_columns
+        self.grouped = self.groupby_stack_columns(stack_columns)
         self.agg_df = None
         self.final_df = None
 
-    
-        
 
-
-    def groupby_id_and_status(self) -> pd.DataFrame:
+    def groupby_stack_columns(self, stack_columns: list[str]) -> pd.DataFrame:
         """Groups the data and prepares it for aggregation"""
 
         self.grouped = self.bureau_df.groupby(
-            ["SK_ID_CURR", "CREDIT_ACTIVE"], observed=True
+            stack_columns, observed=True
         )
         return self.grouped
 
     def aggregate_columns(self, columns: list, agg_func: str) -> pd.DataFrame:
 
         """Generic aggregation method for specified columns and function"""
-        if agg_func == "count_rows":
-            return self.grouped.size().to_frame(name=columns)
+        supported = ["sum", "mean", "max", "min", "count", 'median']
 
-        elif agg_func not in ["sum", "mean", "max", "min"]:
+        if agg_func not in supported:
             raise ValueError(
-                f"Unsupported aggregation function: {agg_func}."
-                + "Supported functions are: 'sum', 'mean', 'max', 'min', 'count_rows'."
+                f"Unsupported aggregation function: {agg_func} not in {supported}",
             )
         
         return getattr(self.grouped[columns], agg_func)()
 
     def aggregate_by_dict(self, metrics_dict: dict[str : list[str]]) -> pd.DataFrame:
         """Aggregate the dataframe by the provided metrics dictionary"""
-        df = pd.DataFrame()
+        agg_results = []
 
-        for agg_func, columns in metrics_dict.items():
+        for column, agg_funcs in metrics_dict.items():
+            if isinstance(agg_funcs, str):
+                agg_funcs = [agg_funcs]
+            for agg_func in agg_funcs:
+                result = self.aggregate_columns([column], agg_func)
+                result.columns = [f"{agg_func}_{column}"]
+                agg_results.append(result)
 
-            agg_result = self.aggregate_columns(columns, agg_func)
-
-            agg_result.columns = [agg_func + "_" + col for col in columns]
-            df = pd.concat([df, agg_result], axis=1)
-
-        self.agg_df = df
-
+        self.agg_df = pd.concat(agg_results, axis=1)
         return self.agg_df
 
-    def flatten_for_ml(self) -> pd.DataFrame:
+    def unstack_df(self, unstack_columns: list[str]=None) -> pd.DataFrame:
         """Pivot the aggregated dataframe to have one row per client"""
+        if unstack_columns is None:
+            unstack_columns = self.stack_columns[1:]
+
+            if len(self.stack_columns) == 0:
+                return self.agg_df
+
+            
+
+
         df = self.agg_df.copy()
 
-        df = df.unstack(level="CREDIT_ACTIVE").reset_index()
-        df.columns = df.columns.map(lambda t: f"{t[1]}_{t[0]}")
+        df = df.unstack(level=unstack_columns).reset_index()
+        
+        name_func = lambda t: "_".join(str(x) for x in t if x != "") if isinstance(t, tuple) else str(t)
 
-        df = df.rename(columns={"_SK_ID_CURR": "SK_ID_CURR"})
+        df.columns = df.columns.map(name_func)
+
+        df.columns = [col.strip("_") for col in df.columns]
 
         self.final_df = df
         return self.final_df

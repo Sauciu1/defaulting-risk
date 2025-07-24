@@ -292,4 +292,6 @@ def load_pkl_to_preprocessor(
     elif type(structure) is list:
         preprocessor.column_structure = column_list_adapter(structure)
 
+    preprocessor.convert_all('category')
+
     return preprocessor

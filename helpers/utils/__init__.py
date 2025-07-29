@@ -12,7 +12,8 @@ from . import (
     vif_helper,
     plotting_helper,
     unsupervised_helper,
-    stats_helper
+    stats_helper,
+    aggregator_helper,
 )
 
 plotting_helper.set_plot_style()

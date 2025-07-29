@@ -3,8 +3,8 @@ import pandas as pd
 
 def encode_agg_bureau_balance(
     data: pd.DataFrame,
-    lookback: str = "10",
-    forecast: str = "3",
+    lookback: int = 10,
+    forecast: int = 3,
     include_end_month: bool = False,
     X_y_split: bool = False,
     test: bool = False,
@@ -18,20 +18,22 @@ def encode_agg_bureau_balance(
     df = data.sort_values(["SK_ID_BUREAU", "MONTHS_BALANCE"]).reset_index(drop=True)
 
 
-    # Add target columns for forecasting
+
+
+    # Create features for the past 'lookback' months
+    for i in range(lookback):
+        df[f"f_{lookback-i-1}"] = df.groupby("SK_ID_BUREAU")["STATUS"].shift(-i + lookback)
+
+
+        # Add target columns for forecasting
     for i in range(forecast):
         df[f"t_{i}"] = df.groupby("SK_ID_BUREAU")["STATUS"].shift(-i)
 
     # Include first forecasted month in the features
-    if include_end_month:
-        df["first_pred_month"] = df["MONTHS_BALANCE"]
-
-    # Create features for the past 'lookback' months
-    for i in range(lookback):
-        df[f"f_{i}"] = df.groupby("SK_ID_BUREAU")["STATUS"].shift(-i + lookback)
+    #if include_end_month:
+    #    df["first_pred_month"] = df["MONTHS_BALANCE"]
 
     df.drop(columns="STATUS", inplace=True)
-    df = df[sorted(df.columns)]
 
     # Remove rows with NaN in target columns
     target_cols = [f"t_{i}" for i in range(forecast)]

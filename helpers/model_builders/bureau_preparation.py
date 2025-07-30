@@ -60,3 +60,4 @@ def get_bureau_balance_aggregated() -> pd.DataFrame:
     )
 
     return agg_bureau_balance
+

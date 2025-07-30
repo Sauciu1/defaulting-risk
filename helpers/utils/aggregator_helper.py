@@ -37,13 +37,16 @@ class RowAggregator:
     def aggregate_columns(self, columns: list, agg_func: str) -> pd.DataFrame:
 
         """Generic aggregation method for specified columns and function"""
-        supported = ["sum", "mean", "max", "min", "count", 'median']
+        supported = ["sum", "mean", "max", "min", "count", 'median', 'onehot_count']
 
         if agg_func not in supported:
             raise ValueError(
                 f"Unsupported aggregation function: {agg_func} not in {supported}",
             )
-        
+        if agg_func == "onehot_count":
+            # One-hot encoding for categorical columns
+            return pd.get_dummies(self.grouped[columns].count(), prefix=columns[0])
+
         return getattr(self.grouped[columns], agg_func)()
 
     def aggregate_by_dict(self, metrics_dict: dict[str, list[str]]) -> pd.DataFrame:

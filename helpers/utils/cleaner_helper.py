@@ -54,7 +54,7 @@ def get_outlier_bounds(series, factor=1.5):
 
     return low, high
 
-def plot_numeric_dist(data, feature, hue=None, title=None, show=True):
+def plot_numeric_dist(data, feature, hue=None, title=None, show=True, xlim=None):
 
 
     if isinstance(data, pd.Series):
@@ -63,9 +63,10 @@ def plot_numeric_dist(data, feature, hue=None, title=None, show=True):
     data = data.copy()
     plt.figure(figsize=(8, 3))
     
-
-
-    low, high = get_outlier_bounds(data[feature])
+    if xlim:
+        low, high = xlim
+    else:
+        low, high = get_outlier_bounds(data[feature])
     data = data[(data[feature] >= low) & (data[feature] <= high)]
 
     discrete = len(data[feature].unique())<30
@@ -73,7 +74,7 @@ def plot_numeric_dist(data, feature, hue=None, title=None, show=True):
     ax = sns.histplot(data=data, hue=hue, x=feature, kde=True, discrete=discrete, bins=50)
 
     if title:
-        plt.title(title)
+        ax.set_title(title)
 
     if hue:
         sns.move_legend(ax ,loc='center left', bbox_to_anchor=(1, 0.5))
@@ -82,14 +83,16 @@ def plot_numeric_dist(data, feature, hue=None, title=None, show=True):
         ax.xaxis.set_major_formatter(plt.ScalarFormatter(useMathText=True))
         ax.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
 
+   
+
+
+
     plt.tight_layout()
+
+
     if show:
         plt.show()
 
+
+
     return ax
-
-
-from statsmodels.stats.proportion import proportions_ztest
-from scipy.stats import fisher_exact
-import seaborn as sns
-from scipy.stats import chi2_contingency

@@ -21,7 +21,7 @@ def pca_3d(data) -> tuple[PCA, np.ndarray]:
 def plotly_3d_pca(
     data: pd.DataFrame, hue_col: str = None, figsize: tuple[int, int] = (700, 550)
 ) -> go.Figure:
-    """Plots 3 component PCA"""
+    """Plots 3 component PCA. Uses Standard Scaler.Keeps only numeric columns and drops NANs."""
     print("Plotting 3D PCA with discarded NANs")
     X = data.select_dtypes(include=["number"]).dropna()
     if hue_col is not None:

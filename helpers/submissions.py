@@ -64,10 +64,12 @@ def lgbm_submission(X_train, y_train, X_test, name) -> str:
 
 
 def cv_lgbm(X_train, y_train=None) -> pd.DataFrame:
-    """Performs cross-validation with LightGBM and returns the score."""
+    """Performs cross-validation with LightGBM and returns the score.
+    Note: if 'TARGET' is in X_train, it will be popped and used as y_train."""
     X_train = X_train.copy()
     if "TARGET" in X_train.columns:
         y_train = X_train.pop("TARGET")
+    X_train = X_train.drop(columns=["SK_ID_CURR"], errors="ignore")
 
     assert y_train is not None, "y_train must be provided if 'TARGET' is not in X_train"
 

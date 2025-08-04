@@ -227,6 +227,7 @@ def plot_corr_triangle(
     method: Literal["pearson", "spearman"] = "pearson",
     response_var=None,
     figsize=None,
+    numbered_labels: bool = True,
     **heatmap_kws,
 ) -> None:
     """plots a triangular correlation matrix"""
@@ -245,7 +246,7 @@ def plot_corr_triangle(
     elif figsize:
         plt.figure(figsize=figsize)
 
-    sns.heatmap(
+    ax =sns.heatmap(
         corr,
         cmap="coolwarm",
         mask=mask,
@@ -257,6 +258,11 @@ def plot_corr_triangle(
     )
     plt.grid(False)
 
+
+    if numbered_labels:
+        numbered_labels_func(ax)
+
+
     # Center the colorbar if present
     ax = plt.gca()
     cbar = ax.collections[0].colorbar if ax.collections else None
@@ -267,6 +273,14 @@ def plot_corr_triangle(
     plt.title(f"{method} Correlation Heatmap".title())
 
     return corr
+
+
+
+def numbered_labels_func(ax: plt.Axes) -> None:
+    """Sets the x-tick labels to be numbers only"""
+    yticklabels = [f"{label.get_text()} : {i}" for i, label in enumerate(ax.get_yticklabels())]
+    ax.set_yticklabels(yticklabels)
+    ax.set_xticklabels(range(len(yticklabels)), rotation=0)
 
 
 def count_lineplot(data, x, hue, ax=None, title=None, **kwargs):

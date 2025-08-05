@@ -24,6 +24,11 @@ def _convert_types(X, model: Predictor) -> pd.DataFrame:
     if hasattr(model, "__module__") and "lightgbm" in model.__module__:
         for col in X.select_dtypes(include="object").columns:
             X[col] = X[col].astype("category")
+    elif hasattr(model, "__module__") and "xgboost" in model.__module__:
+        # XGBoost can handle categorical data, but it requires the columns to be of type 'category'
+        for col in X.select_dtypes(include="object").columns:
+            X[col] = X[col].astype("category")
+ 
 
     else:
         for col in X.select_dtypes(include="category").columns:
@@ -41,7 +46,7 @@ def stratified_cv_model(model: Predictor, X: pd.DataFrame, y: pd.Series, scoring
     if not hasattr(model, "predict_proba"):
         scoring = list(set(scoring) - set(probability_metrics))
 
-    X = _convert_types(X, model)
+    #X = _convert_types(X, model)
    
 
     skf = StratifiedKFold(n_splits=cv, shuffle=True, random_state=42)

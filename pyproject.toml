@@ -25,7 +25,8 @@ dependencies = [
     "ipywidgets (>=8.1.7,<9.0.0)",
     "plotly (>=6.2.0,<7.0.0)",
     "nbformat (>=5.10.4,<6.0.0)",
-    "kaleido (>=1.0.0,<2.0.0)"
+    "kaleido (>=1.0.0,<2.0.0)",
+    "xgboost (>=3.0.3,<4.0.0)"
 ]
 
 [tool.poetry]

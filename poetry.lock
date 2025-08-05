@@ -1363,6 +1363,19 @@ files = [
 ]
 
 [[package]]
+name = "nvidia-nccl-cu12"
+version = "2.27.7"
+description = "NVIDIA Collective Communication Library (NCCL) Runtime"
+optional = false
+python-versions = ">=3"
+groups = ["main"]
+markers = "platform_system == \"Linux\" and platform_machine != \"aarch64\""
+files = [
+    {file = "nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:4617839f3bb730c3845bf9adf92dbe0e009bc53ca5022ed941f2e23fb76e6f17"},
+    {file = "nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:de5ba5562f08029a19cb1cd659404b18411ed0d6c90ac5f52f30bf99ad5809aa"},
+]
+
+[[package]]
 name = "optree"
 version = "0.16.0"
 description = "Optimized PyTree Utilities."
@@ -2829,7 +2842,37 @@ files = [
     {file = "widgetsnbextension-4.0.14.tar.gz", hash = "sha256:a3629b04e3edb893212df862038c7232f62973373869db5084aed739b437b5af"},
 ]
 
+[[package]]
+name = "xgboost"
+version = "3.0.3"
+description = "XGBoost Python Package"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "xgboost-3.0.3-py3-none-macosx_10_15_x86_64.whl", hash = "sha256:bb6e1b7d63276b9a95b1142b0e9e736137214a8dd108605b1d7d93841b631989"},
+    {file = "xgboost-3.0.3-py3-none-macosx_12_0_arm64.whl", hash = "sha256:fd8309499243c60e441503259e9e39b644bbc3041d05f25d597f7fe01e4102bc"},
+    {file = "xgboost-3.0.3-py3-none-manylinux2014_aarch64.whl", hash = "sha256:06e7fa513bbf70ae106e9f231e08908b42ce08b5cafeec898b62f6b13cb9573b"},
+    {file = "xgboost-3.0.3-py3-none-manylinux2014_x86_64.whl", hash = "sha256:5b755051749a718feacb9bf863fa2478f8ac17c106477c4457a018991387765e"},
+    {file = "xgboost-3.0.3-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:5b0ecfd62abd52869444c15aadd6db6f899e47aa8855541e574cf65181957bf6"},
+    {file = "xgboost-3.0.3-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:93a198b3aee33b3b597f5b1502b32353c5055a022a3877f79e2c1bd8048ab8ec"},
+    {file = "xgboost-3.0.3-py3-none-win_amd64.whl", hash = "sha256:a5dff641676fea3ac80641ffe3531969ac3a071f9e1bc6f04e90a5b3554c94a9"},
+    {file = "xgboost-3.0.3.tar.gz", hash = "sha256:5cd13796b4eb8ca72c994f1f76aae74a977082c0dee6b4af5ab7c2826ad6045d"},
+]
+
+[package.dependencies]
+numpy = "*"
+nvidia-nccl-cu12 = {version = "*", markers = "platform_system == \"Linux\" and platform_machine != \"aarch64\""}
+scipy = "*"
+
+[package.extras]
+dask = ["dask", "distributed", "pandas"]
+pandas = ["pandas (>=1.2)"]
+plotting = ["graphviz", "matplotlib"]
+pyspark = ["cloudpickle", "pyspark", "scikit-learn"]
+scikit-learn = ["scikit-learn"]
+
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13"
-content-hash = "a384fe6e7eebc91b41a301343db0ab8b397f032b1ad4f3f3f564b5f3c6b0b2e0"
+content-hash = "04da828702a52f320c836f2a985f11a30cb7c7fb166c5dfbdcf55e6302c4f03c"

@@ -247,6 +247,7 @@ def load_pkl_to_preprocessor(
     if table in ["application_train", "application_test"]:
         with open("data/processed/application_columns.pkl", "rb") as f:
             pkl_columns = pickle.load(f)
+        df["DAYS_EMPLOYED"] = df["DAYS_EMPLOYED"].replace(365243, pd.NA)
 
     elif table in [
         "bureau",

@@ -52,7 +52,10 @@ def stratified_cv_model(model: Predictor, X: pd.DataFrame, y: pd.Series, scoring
         cv=skf,
         return_train_score=False
     )
-    return pd.DataFrame({metric: [round(float(scores[f'test_{metric}'].mean()), 4)] for metric in scoring})
+    mean = {metric: round(float(scores[f'test_{metric}'].mean()), 4) for metric in scoring}
+    std = {metric: round(float(scores[f'test_{metric}'].std()), 4) for metric in scoring}
+    results = pd.DataFrame([mean, std], index=["mean", "std"])
+    return results
 
 
 

@@ -1,8 +1,7 @@
 from inspect import stack
 import pandas as pd
 import numpy as np
-
-
+import re
 
 class RowAggregator:
     """
@@ -15,7 +14,9 @@ class RowAggregator:
     e.g. {"AMT_CREDIT": ["sum", "mean"], "DAYS_CREDIT": "max"}
     """
 
-    def __init__(self, df: pd.DataFrame, stack_columns: list[str], agg_dict: dict[str, list[str]]) -> None:
+    def __init__(
+        self, df: pd.DataFrame, stack_columns: list[str], agg_dict: dict[str, list[str]]
+    ) -> None:
         self.df = df.copy()
         self.stack_columns = stack_columns
         self.grouped = self.groupby_stack_columns(stack_columns)
@@ -29,15 +30,35 @@ class RowAggregator:
     def groupby_stack_columns(self, stack_columns: list[str]) -> pd.DataFrame:
         """Groups the data and prepares it for aggregation"""
 
-        self.grouped = self.df.groupby(
-            stack_columns, observed=True
-        )
+        self.grouped = self.df.groupby(stack_columns, observed=True)
         return self.grouped
 
-    def aggregate_columns(self, columns: list, agg_func: str) -> pd.DataFrame:
+    def onehot_count(self, column: str) -> pd.DataFrame:
+        """One-hot encoding for categorical columns"""
+        df = self.df[self.stack_columns + column].copy()
+        # encoded = df.groupby(self.stack_columns + column)[column].value_counts()
+        df = df.pivot_table(
+            index=self.stack_columns,
+            columns=column,
+            aggfunc="size",
+            fill_value=0,
+            observed=False,
+        )
+        df.columns = [
+            f"onehot_count_{column[0]}_{str(val[0])}".replace(" ", "_")
+            for val in df.columns
+        ]
 
+        # Remove JSON-like characters from column names
+        df = df.rename(columns = lambda x:re.sub('[^A-Za-z0-9_]+', '', x))
+
+        return df
+
+    def aggregate_columns(self, column: list, agg_func: str) -> pd.DataFrame:
+
+        # print(column, agg_func)
         """Generic aggregation method for specified columns and function"""
-        supported = ["sum", "mean", "max", "min", "count", 'median', 'onehot_count']
+        supported = ["sum", "mean", "max", "min", "count", "median", "onehot_count", "std"]
 
         if agg_func not in supported:
             raise ValueError(
@@ -45,9 +66,11 @@ class RowAggregator:
             )
         if agg_func == "onehot_count":
             # One-hot encoding for categorical columns
-            return pd.get_dummies(self.grouped[columns].count(), prefix=columns[0])
+            return self.onehot_count(column)
 
-        return getattr(self.grouped[columns], agg_func)()
+        new_df = getattr(self.grouped[column], agg_func)()
+        new_df.columns = [f"{agg_func}_{column[0]}"]
+        return new_df
 
     def aggregate_by_dict(self, metrics_dict: dict[str, list[str]]) -> pd.DataFrame:
         """Aggregate the dataframe by the provided metrics dictionary"""
@@ -58,13 +81,17 @@ class RowAggregator:
                 agg_funcs = [agg_funcs]
             for agg_func in agg_funcs:
                 result = self.aggregate_columns([column], agg_func)
-                result.columns = [f"{agg_func}_{column}"]
                 agg_results.append(result)
 
-        self.agg_df = pd.concat(agg_results, axis=1)
+        # Fix: Use join='outer' and sort=False to handle index misalignment
+        self.agg_df = pd.concat(agg_results, axis=1, join='outer', sort=False)
+        
+        # Remove any duplicate columns that might still exist
+        self.agg_df = self.agg_df.loc[:, ~self.agg_df.columns.duplicated(keep='first')]
+        
         return self.agg_df
 
-    def unstack_df(self, unstack_columns: list[str]=None) -> pd.DataFrame:
+    def unstack_df(self, unstack_columns: list[str] = None) -> pd.DataFrame:
         """Pivot the aggregated dataframe to have one row per client"""
         if unstack_columns is None:
             unstack_columns = self.stack_columns[1:]
@@ -72,15 +99,9 @@ class RowAggregator:
             if len(self.stack_columns) == 0:
                 return self.agg_df
 
-            
         df = self.agg_df.copy()
         df = df.unstack(level=unstack_columns).reset_index()
 
-        def name_func(t) -> str:
-            """Join unstacked names for columns"""
-            if isinstance(t, tuple):
-                return "_".join(str(x) for x in t if x != "")
-            return str(t)
 
         df.columns = df.columns.map(name_func)
 
@@ -88,3 +109,13 @@ class RowAggregator:
 
         self.final_df = df
         return self.final_df
+    
+
+    
+def name_func(t) -> str:
+    """Join unstacked names for columns"""
+    if isinstance(t, tuple):
+        # Filter out empty strings and join properly
+        parts = [str(x) for x in t if str(x) != "" and str(x) != "nan"]
+        return "_".join(parts)
+    return str(t)

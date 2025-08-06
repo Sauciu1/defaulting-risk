@@ -6,4 +6,5 @@ from . import (
     one_off_plots,
     submissions,
     table_navigator,
+    final_model_helper
 )

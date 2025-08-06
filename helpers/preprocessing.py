@@ -3,7 +3,10 @@ import pandas as pd
 from sklearn import preprocessing
 import os
 import pickle
+
 from helpers import table_navigator
+import numpy as np
+
 
 pd.set_option("future.no_silent_downcasting", True)
 
@@ -239,15 +242,17 @@ def load_pkl_to_preprocessor(
         "previous_application",
         "installments_payments",
     ],
+    tables_path: str = "data/raw_csv",
+    columns_dict_path: str = "data/processed"
 ) -> Preprocessor:
     """Construct preprocessor anew using pickled files and raw_data."""
 
-    df = table_navigator.get_tables_from_dir("data/raw_csv", table)[table]
+    df = table_navigator.get_tables_from_dir(tables_path, table)[table]
 
     if table in ["application_train", "application_test"]:
-        with open("data/processed/application_columns.pkl", "rb") as f:
+        with open(os.path.join(columns_dict_path, "application_columns.pkl"), "rb") as f:
             pkl_columns = pickle.load(f)
-        df["DAYS_EMPLOYED"] = df["DAYS_EMPLOYED"].replace(365243, pd.NA)
+        df["DAYS_EMPLOYED"] = df["DAYS_EMPLOYED"].replace(365243, np.nan).astype(float)
 
     elif table in [
         "bureau",
@@ -257,7 +262,7 @@ def load_pkl_to_preprocessor(
         "previous_application",
         "installments_payments",
     ]:
-        with open(f"data/processed/supplementary_tables_columns.pkl", "rb") as f:
+        with open(os.path.join(columns_dict_path, "supplementary_tables_columns.pkl"), "rb") as f:
             pkl_columns = pickle.load(f)
     else:
         raise ValueError(f"Unsupported table: {table}.")

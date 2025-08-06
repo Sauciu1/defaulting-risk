@@ -1,7 +1,7 @@
-from inspect import stack
 import pandas as pd
 import numpy as np
 import re
+from typing import Literal
 
 class RowAggregator:
     """
@@ -15,13 +15,33 @@ class RowAggregator:
     """
 
     def __init__(
-        self, df: pd.DataFrame, stack_columns: list[str], agg_dict: dict[str, list[str]]
+        self, df: pd.DataFrame, stack_columns: list[str], agg_dict: Literal['auto'] | dict[str, list[str]]
     ) -> None:
         self.df = df.copy()
         self.stack_columns = stack_columns
         self.grouped = self.groupby_stack_columns(stack_columns)
+
+        if isinstance(agg_dict, dict):
+            agg_dict = agg_dict
+        elif agg_dict.lower() == "auto":
+            agg_dict = self.generate_agg_dict()
+        else:
+            raise ValueError("agg_dict must be 'auto' or a dictionary of aggregations")
+  
+
         self.agg_df = self.aggregate_by_dict(agg_dict)
         self.final_df = self.unstack_df()
+
+    def generate_agg_dict(self):
+        """Generates an aggregation dictionary based on numeric and categorical columns"""
+        numeric_cols = self.df.select_dtypes(include=[np.number]).columns.tolist()
+        cat_cols = self.df.select_dtypes(include=["category"]).columns.tolist()
+        
+        agg_dict = {
+            **{col: ["sum", "max", "median", "min", "std"] for col in numeric_cols},
+            **{col: "onehot_count" for col in cat_cols},
+        }
+        return agg_dict
 
     def get_df(self) -> pd.DataFrame:
         """Returns the final aggregated dataframe"""

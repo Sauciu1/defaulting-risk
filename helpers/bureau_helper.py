@@ -52,3 +52,25 @@ def encode_agg_bureau_balance(
         return X, y
 
     return df
+
+
+def simplify_credit_type(df) -> pd.DataFrame:
+    """Agregates credit type"""
+    df = df.copy()
+    df["CREDIT_TYPE"] = df["CREDIT_TYPE"].astype("str")
+    df.loc[~df["CREDIT_TYPE"].isin(["Consumer credit", "Credit card", "Mortgage"]), "CREDIT_TYPE"] = "Other"
+    df["CREDIT_TYPE"] = df["CREDIT_TYPE"].astype("category")
+    return df
+
+
+def process_bureau_balance(bureau_df, balance_df) -> pd.DataFrame:
+    """Adds bureau balance aggregated data to bureau dataframe"""
+
+    
+    balance_df = balance_df[["f_1", "f_0", "bad_payments"]]
+    
+    balance_df.columns = ["SK_ID_BUREAU"] + ["bur_bal_"+col for col in balance_df.columns[1:]]
+    
+    balance_df["SK_ID_BUREAU"] = balance_df["SK_ID_BUREAU"].astype(str)
+
+    return balance_df

@@ -11,18 +11,10 @@ from helpers.utils import sklearn_helper
 from lightgbm import LGBMClassifier
 
 import numpy as np
+from sklearn.pipeline import Pipeline
 
 
 def prepare_submission(model, X_test, X_id, name, folder="submissions") -> str:
-
-    expected_f, given_f = set(list(X_test.columns)), set(list(model.feature_name_))
-    if expected_f != given_f:
-        error_msg = (
-            f"Model features do not match test data columns.\n"
-            f"Unexpected features: {list(given_f - expected_f)}\n"
-            f"Missing features: {list(expected_f - given_f)}"
-        )
-        raise ValueError(error_msg)
 
     predictions = model.predict_proba(X_test)[:, 1]
 

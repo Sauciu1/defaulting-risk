@@ -1,3 +1,4 @@
+from multiprocessing import Pipe
 import optuna
 import numpy as np
 import pandas as pd
@@ -7,6 +8,8 @@ import joblib
 import os
 from sklearn.pipeline import Pipeline
 from IPython.display import display
+import joblib
+from sklearn.metrics import get_scorer
 
 def logging_callback(study, frozen_trial, update_freq=20):
     previous_best_value = study.user_attrs.get("previous_best_value", None)
@@ -34,20 +37,28 @@ def objective_function(
     X_train: pd.DataFrame,
     y_train: pd.Series,
     scoring: str,
+    cv: bool|int = False
 ) -> float:
     
     model_clone = clone(model)
-    model_clone[-1].set_params(**{f'classifier__{k}': v for k, v in params(trial).items()})
-    # 5-fold stratified cross-validation
-    train_x, valid_x, train_y, valid_y = train_test_split(X_train, y_train, test_size=0.20, stratify=y_train)
-    model_clone.fit(train_x, train_y)
-    preds = model_clone.predict(valid_x)
 
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=326)
-    scores = cross_val_score(model_clone, X_train, y_train, cv=cv, scoring=scoring, n_jobs=1)
-    return np.mean(scores)
+    if isinstance(model_clone, Pipeline):
+        model_clone[-1].set_params(**{f'classifier__{k}': v for k, v in params(trial).items()})
+    else:
+        model_clone.set_params(**params(trial))
+    
+    if (cv is False) or (cv is None) or (cv == 0):
+        train_x, valid_x, train_y, valid_y = train_test_split(X_train, y_train, test_size=0.20, stratify=y_train)
+        model_clone.fit(train_x, train_y)
+        scorer = get_scorer(scoring)
+        return scorer(model_clone, valid_x, valid_y)
 
-def copy_study_to_pipeline(study: optuna.study, pipeline:BaseEstimator):
+    if cv:
+        cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=326)
+        scores = cross_val_score(model_clone, X_train, y_train, cv=cv, scoring=scoring, n_jobs=-1)
+        return np.mean(scores)
+
+def copy_study_to_pipeline(study: optuna.study, pipeline:BaseEstimator) -> BaseEstimator:
     """
     Copies the model parameters from a fitted model to a pipeline's classifier step.
     """
@@ -57,36 +68,25 @@ def copy_study_to_pipeline(study: optuna.study, pipeline:BaseEstimator):
     return pipeline
 
 
-def load_or_create_end_model(pipe, model_name, creation_study: callable):
-    model_path = os.path.join('models', model_name)
-    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+def run_study(pipeline, params, X_train, y_train, scoring_function='roc_auc', n_trials = 50) -> dict:
+    study = optuna.create_study(direction="maximize")
+    
+    def objective(trial) -> float:
+        return objective_function(trial, pipeline, params, X_train, y_train, scoring_function)
 
-    if os.path.exists(model_path):
-        print("LGBM Model loaded from file: " + model_path)
-        model = joblib.load(model_path)
+    study.optimize(objective, n_trials=n_trials, )#callbacks=[logging_callback])
+
+    return study
+
+
+
+def load_or_create_study(name, run_study, path="models") ->Pipeline:
+    full_path = f"{path}/{name}.jbl"
+    if os.path.exists(full_path):
+        with open(full_path, "rb") as f:
+            return joblib.load(f)
     else:
-        model = creation_study(pipe)
-        print("LGBM Model saved to file: " + model_path)
-        joblib.dump(model, model_path)
-
-    display(model)
-    return model
-
-
-import pickle
-def load_or_create_study(pipe, model_name, creation_study: callable):
-    model_path = os.path.join('models', model_name)
-    os.makedirs(os.path.dirname(model_path), exist_ok=True)
-
-    if os.path.exists(model_path):
-        print("LGBM Model loaded from file: " + model_path)
-        with open(model_path, 'rb') as file:
-            model = pickle.load(file)
-    else:
-        model = creation_study(pipe)
-        print("LGBM Model saved to file: " + model_path)
-        with open(model_path, 'wb') as file:
-            pickle.dump(model, file)
-
-    display(model)
-    return model
+        pipe = run_study()
+        with open(full_path, "wb") as f:
+            joblib.dump(pipe, f)
+        return pipe

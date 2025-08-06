@@ -17,7 +17,7 @@ The project can be cloned and results reproduced with the following commands.
 ``` powershell
 git clone https://github.com/TuringCollegeSubmissions/psauci-DS.v2.5.3.4.1
 pip install poetry
-poetry install
+poetry install --no-root
 ```
 
 

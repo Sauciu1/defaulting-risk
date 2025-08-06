@@ -5,16 +5,15 @@ description = "Analysis of Home Credit Default Risk"
 authors = [
     {name = "Povilas",email = "p.sauciuvienas@gmail.com"}
 ]
+package-mode = false
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "pandas (>=2.3.0,<3.0.0)",
-    "scikit-learn (>=1.7.0,<2.0.0)",
+    "scikit-learn (==1.6.1)",
     "duck (>=0.1,<0.2)",
     "db (>=0.1.1,<0.2.0)",
     "ipykernel (>=6.29.5,<7.0.0)",
-    "seaborn (>=0.13.2,<0.14.0)",
-    "matplotlib (>=3.10.3,<4.0.0)",
     "statsmodels (>=0.14.4,<0.15.0)",
     "lightgbm (>=4.6.0,<5.0.0)",
     "hdbscan (>=0.8.40,<0.9.0)",
@@ -26,11 +25,12 @@ dependencies = [
     "plotly (>=6.2.0,<7.0.0)",
     "nbformat (>=5.10.4,<6.0.0)",
     "kaleido (>=1.0.0,<2.0.0)",
-    "xgboost (>=3.0.3,<4.0.0)"
+    "xgboost (>=3.0.3,<4.0.0)",
+    "imbalanced-learn (==0.13.0)",
+    "seaborn (>=0.13.2,<0.14.0)",
 ]
 
 [tool.poetry]
-packages = [{include = "psauci_ds"}]
 
 
 [tool.poetry.group.dev.dependencies]

@@ -139,6 +139,8 @@ class tables_to_input_converters:
         """Get the bureau balance aggregation table. as per workflow of NB5"""
         balance = self.nb3_get_input_table("bureau_balance").convert_all("category")
 
+        balance= balance.loc[balance["MONTHS_BALANCE"] >= -12, :].copy()
+
         agg = bureau_helper.encode_agg_bureau_balance(
             data=balance,
             lookback=4,
@@ -150,7 +152,7 @@ class tables_to_input_converters:
 
         agg_df = agg[agg["MONTHS_BALANCE"] == 0].drop(columns=["MONTHS_BALANCE"])
 
-        def include_bad_payments(balance, agg_df):
+        def include_bad_payments(balance, agg_df) -> pd.DataFrame:
             bad_payments = balance[balance["STATUS"].isin(["2", "3", "4", "5"])]
             bad_payments = (
                 bad_payments.groupby("SK_ID_BUREAU")

@@ -66,9 +66,9 @@ def simplify_credit_type(df) -> pd.DataFrame:
 def process_bureau_balance(bureau_df, balance_df) -> pd.DataFrame:
     """Adds bureau balance aggregated data to bureau dataframe"""
 
-    
-    balance_df = balance_df[["f_1", "f_0", "bad_payments"]]
-    
+
+    balance_df = balance_df.loc[:, ["SK_ID_BUREAU","f_1", "f_0", "bad_payments"]]
+
     balance_df.columns = ["SK_ID_BUREAU"] + ["bur_bal_"+col for col in balance_df.columns[1:]]
     
     balance_df["SK_ID_BUREAU"] = balance_df["SK_ID_BUREAU"].astype(str)

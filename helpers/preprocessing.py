@@ -132,15 +132,8 @@ class Preprocessor:
         missing = self.missing_columns()
         unexpected = self.unexpected_columns()
 
-        if missing:
-            print(f"Missing columns: {missing}")
-        else:
-            print("No missing columns.")
-
-        if unexpected:
-            print(f"Unexpected columns: {unexpected}")
-        else:
-            print("No unexpected columns.")
+        if missing or unexpected:
+            print(f"Missing columns: {missing}; Unexpected columns: {unexpected}")
 
         return {"missing": missing, "unexpected": unexpected}
 

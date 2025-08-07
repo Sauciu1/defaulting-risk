@@ -99,25 +99,28 @@ class tables_to_input_converters:
         self.bureau_agg = None
         self.prev_app = None
 
+        self.credit_card_balance = None
+        self.installments_payments = None
+        self.POS_CASH_balance = None
 
     def get_full_input(self) -> pd.DataFrame:
         """Efficiently merge all tables with progress tracking."""
         print("Loading application data...")
         if self.app is None:
             self.app = self.nb1_get_application_table()
-        
+
         print("Processing bureau data...")
         if self.bureau_agg is None:
             self.bureau_agg = self.nb6_bureau_agg()
-        
+
         print("Processing previous applications...")
         if self.prev_app is None:
             self.prev_app = self.nb7_previous_applications()
-        
+
         print("Merging tables...")
-        full_df = (self.app
-                    .merge(self.bureau_agg, on="SK_ID_CURR", how="left")
-                    .merge(self.prev_app, on="SK_ID_CURR", how="left"))
+        full_df = self.app.merge(self.bureau_agg, on="SK_ID_CURR", how="left").merge(
+            self.prev_app, on="SK_ID_CURR", how="left"
+        )
 
         print(f"Final dataset shape: {full_df.shape}")
         return full_df
@@ -126,11 +129,13 @@ class tables_to_input_converters:
         """Get combined application table (train + test)."""
         app_train = self.nb3_get_input_table("application_train")
         app_test = self.nb3_get_input_table("application_test")
-        
+
         # Combine data properly
         combined_data = pd.concat([app_train.data, app_test.data], ignore_index=True)
-        combined_data["DAYS_EMPLOYED"] = combined_data["DAYS_EMPLOYED"].replace(365243, np.nan).astype(float)
-        
+        combined_data["DAYS_EMPLOYED"] = (
+            combined_data["DAYS_EMPLOYED"].replace(365243, np.nan).astype(float)
+        )
+
         # Create new preprocessor with combined data
         app_train.data = combined_data
         self.app = app_train.convert_all("category")
@@ -139,14 +144,16 @@ class tables_to_input_converters:
     def nb3_get_input_table(self, table: str) -> preprocessing.Preprocessor:
         if not os.path.exists(self.tables_path):
             raise FileNotFoundError(f"Tables path not found: {self.tables_path}")
-        
+
         # Validate specific table exists
         table_path = os.path.join(self.tables_path, f"{table}.csv")
         if not os.path.exists(table_path):
             raise FileNotFoundError(f"Table file not found: {table_path}")
-        
+
         return preprocessing.load_pkl_to_preprocessor(
-            table, tables_path=self.tables_path, columns_dict_path=self.columns_schema_path
+            table,
+            tables_path=self.tables_path,
+            columns_dict_path=self.columns_schema_path,
         )
 
     def nb5_bureau_balance_agg(
@@ -188,19 +195,17 @@ class tables_to_input_converters:
             return agg_bureau_balance
 
         agg_balance = include_bad_payments(balance, agg_df)
-        self.bureau_balance = agg_balance
+        self.bureau_balance = bureau_helper.process_bureau_balance(agg_balance)
         return self.bureau_balance
 
     def nb6_bureau_agg(self) -> pd.DataFrame:
         bureau_df = self.nb3_get_input_table("bureau").convert_all("category")
         bureau_df = bureau_helper.simplify_credit_type(bureau_df)
-
+        bureau_df = bureau_helper.credit_feature_engineering(bureau_df)
 
         balance_df = self.nb5_bureau_balance_agg()
-        balance_df = bureau_helper.process_bureau_balance(balance_df)
-        balance_df = bureau_helper.credit_feature_engineering(balance_df)
 
-        merged_df = pd.merge(bureau_df, balance_df, on="SK_ID_BUREAU", how="left")
+        merged_df = bureau_df.merge(balance_df, on="SK_ID_BUREAU", how="left")
 
         self.bureau_agg = aggregator_helper.RowAggregator(
             merged_df,
@@ -208,26 +213,26 @@ class tables_to_input_converters:
             agg_dict="auto",
         ).get_df()
 
-
         return self.bureau_agg
 
-    def nb7_previous_applications(self) -> pd.DataFrame:
-        prev_app = self.nb3_get_input_table("previous_application").convert_all(
-            "category"
+    def _agg_prev_app_table(self) -> pd.DataFrame:
+        _, agg_prev_app = get_agg_df(
+            table="previous_application",
+            group_by=["SK_ID_CURR"],
+            no_prefix_cols=["SK_ID_CURR"],
         )
+        return agg_prev_app
 
-        agg_prev = aggregator_helper.RowAggregator(
-            df=prev_app,
-            stack_columns=["SK_ID_CURR"],
-            agg_dict="auto",
-        ).get_df()
+    def nb7_previous_applications(self) -> pd.DataFrame:
+        """returns self.prev_app"""
 
         subtables = self.merge_previous_suptables()
         subtables.drop(columns=["SK_ID_PREV"], inplace=True, errors="ignore")
+
+        agg_prev = self._agg_prev_app_table()
         agg_prev.drop(columns=["SK_ID_PREV"], inplace=True, errors="ignore")
 
-        self.prev_app = pd.merge(
-            agg_prev,
+        self.prev_app = agg_prev.merge(
             subtables,
             on="SK_ID_CURR",
             how="outer",
@@ -243,8 +248,7 @@ class tables_to_input_converters:
             installments_agg_df,
             on="SK_ID_CURR",
             how="outer",
-        )
-        base = base.merge(
+        ).merge(
             credit_agg_df,
             on="SK_ID_CURR",
             how="outer",
@@ -264,13 +268,19 @@ class tables_to_input_converters:
             "credit_card_balance": "credit",
         }
 
-        _, credit_agg = get_agg_df(
+        if getattr(self, table) is not None:
+            return getattr(self, table)
+
+        _, agg_table = get_agg_df(
             table,
-            group_by="SK_ID_CURR",
+            group_by=["SK_ID_CURR"],
             prefix=prefixes[table],
             no_prefix_cols=["SK_ID_CURR"],
         )
-        return credit_agg
+
+        setattr(self, table, agg_table)
+
+        return agg_table
 
     def keep_model_columns(
         self, model_column_path="models/model_columns.jbl"
@@ -292,7 +302,7 @@ class tables_to_input_converters:
 
 def get_agg_df(
     table: str,
-    group_by: str = "SK_ID_CURR",
+    group_by: list[str] = ["SK_ID_CURR"],
     prefix: str = None,
     no_prefix_cols: list[str] = [],
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -300,10 +310,13 @@ def get_agg_df(
     Returns the raw dataframe and the aggregated dataframe."""
     no_prefix_cols
 
-    raw_df = preprocessing.load_pkl_to_preprocessor(table).convert_all("category")
+    raw_df = preprocessing.load_pkl_to_preprocessor(
+        table, tables_path="data/raw_csv/", columns_dict_path="models"
+    ).convert_all("category")
+
     agg = aggregator_helper.RowAggregator(
         df=raw_df,
-        stack_columns=["SK_ID_CURR"],
+        stack_columns=group_by,
         agg_dict="auto",
     )
     agg_df = agg.get_df(prefix=prefix, no_prefix_cols=no_prefix_cols)

@@ -51,11 +51,16 @@ class RowAggregator:
 
         return agg_dict
 
-    def get_df(self, prefix:str=None, no_prefix_cols:list[str]=None) -> pd.DataFrame:
+    def get_df(
+        self, prefix: str = None, no_prefix_cols: list[str] = None
+    ) -> pd.DataFrame:
         """Returns the final aggregated dataframe"""
         df = self.final_df.copy()
         if prefix:
-            df.columns = [col if col in no_prefix_cols else f"{prefix}_{col}" for col in df.columns]
+            df.columns = [
+                col if col in no_prefix_cols else f"{prefix}_{col}"
+                for col in df.columns
+            ]
 
         return df
 

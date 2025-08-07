@@ -63,7 +63,7 @@ def simplify_credit_type(df) -> pd.DataFrame:
     return df
 
 
-def process_bureau_balance(bureau_df, balance_df) -> pd.DataFrame:
+def process_bureau_balance(balance_df) -> pd.DataFrame:
     """Adds bureau balance aggregated data to bureau dataframe"""
 
 

@@ -3,6 +3,7 @@ import numpy as np
 import re
 from typing import Literal
 
+
 class RowAggregator:
     """
     Class to automatically run row aggregations on a dataframe.
@@ -15,7 +16,10 @@ class RowAggregator:
     """
 
     def __init__(
-        self, df: pd.DataFrame, stack_columns: list[str], agg_dict: Literal['auto'] | dict[str, list[str]]
+        self,
+        df: pd.DataFrame,
+        stack_columns: list[str],
+        agg_dict: Literal["auto"] | dict[str, list[str]],
     ) -> None:
         self.df = df.copy()
         self.stack_columns = stack_columns
@@ -27,7 +31,6 @@ class RowAggregator:
             agg_dict = self.generate_agg_dict()
         else:
             raise ValueError("agg_dict must be 'auto' or a dictionary of aggregations")
-  
 
         self.agg_df = self.aggregate_by_dict(agg_dict)
         self.final_df = self.unstack_df()
@@ -36,16 +39,25 @@ class RowAggregator:
         """Generates an aggregation dictionary based on numeric and categorical columns"""
         numeric_cols = self.df.select_dtypes(include=[np.number]).columns.tolist()
         cat_cols = self.df.select_dtypes(include=["category"]).columns.tolist()
-        
+
         agg_dict = {
             **{col: ["sum", "max", "median", "min", "std"] for col in numeric_cols},
             **{col: "onehot_count" for col in cat_cols},
         }
+
+        # Remove stack columns from aggregation
+        for col in self.stack_columns[1:]:
+            agg_dict[col] = "count"
+
         return agg_dict
 
-    def get_df(self) -> pd.DataFrame:
+    def get_df(self, prefix:str=None, no_prefix_cols:list[str]=None) -> pd.DataFrame:
         """Returns the final aggregated dataframe"""
-        return self.final_df
+        df = self.final_df.copy()
+        if prefix:
+            df.columns = [col if col in no_prefix_cols else f"{prefix}_{col}" for col in df.columns]
+
+        return df
 
     def groupby_stack_columns(self, stack_columns: list[str]) -> pd.DataFrame:
         """Groups the data and prepares it for aggregation"""
@@ -70,7 +82,7 @@ class RowAggregator:
         ]
 
         # Remove JSON-like characters from column names
-        df = df.rename(columns = lambda x:re.sub('[^A-Za-z0-9_]+', '', x))
+        df = df.rename(columns=lambda x: re.sub("[^A-Za-z0-9_]+", "", x))
 
         return df
 
@@ -78,7 +90,16 @@ class RowAggregator:
 
         # print(column, agg_func)
         """Generic aggregation method for specified columns and function"""
-        supported = ["sum", "mean", "max", "min", "count", "median", "onehot_count", "std"]
+        supported = [
+            "sum",
+            "mean",
+            "max",
+            "min",
+            "count",
+            "median",
+            "onehot_count",
+            "std",
+        ]
 
         if agg_func not in supported:
             raise ValueError(
@@ -104,11 +125,11 @@ class RowAggregator:
                 agg_results.append(result)
 
         # Fix: Use join='outer' and sort=False to handle index misalignment
-        self.agg_df = pd.concat(agg_results, axis=1, join='outer', sort=False)
-        
+        self.agg_df = pd.concat(agg_results, axis=1, join="outer", sort=False)
+
         # Remove any duplicate columns that might still exist
-        self.agg_df = self.agg_df.loc[:, ~self.agg_df.columns.duplicated(keep='first')]
-        
+        self.agg_df = self.agg_df.loc[:, ~self.agg_df.columns.duplicated(keep="first")]
+
         return self.agg_df
 
     def unstack_df(self, unstack_columns: list[str] = None) -> pd.DataFrame:
@@ -122,16 +143,14 @@ class RowAggregator:
         df = self.agg_df.copy()
         df = df.unstack(level=unstack_columns).reset_index()
 
-
         df.columns = df.columns.map(name_func)
 
         df.columns = [col.strip("_") for col in df.columns]
 
         self.final_df = df
         return self.final_df
-    
 
-    
+
 def name_func(t) -> str:
     """Join unstacked names for columns"""
     if isinstance(t, tuple):

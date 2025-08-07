@@ -4,7 +4,7 @@ from sklearn import preprocessing
 import os
 import pickle
 
-from helpers import table_navigator
+from . import table_navigator
 import numpy as np
 
 
@@ -121,6 +121,8 @@ class Preprocessor:
             pass
         else:
             raise ValueError(f"Unsupported type: {type}. Use 'object' or 'category'.")
+        
+        self.data = convert_to_object(self.data, self.str_columns)
 
         self.check_columns()
         return self.data

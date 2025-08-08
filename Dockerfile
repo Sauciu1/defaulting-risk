@@ -27,9 +27,11 @@ RUN poetry config virtualenvs.create false && \
 
 # Copy your full source code
 COPY helpers/ /app/helpers
+COPY models/ /app/models/
+COPY deployment.py /app/
 
 # Run the script
-#CMD ["python", "./module_deployment.py"]
+CMD ["python", "./deployment.py"]
 
 
 ENV HOST=0.0.0.0

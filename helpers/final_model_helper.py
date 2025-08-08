@@ -131,13 +131,13 @@ class tables_to_input_converters:
         app_test = self.nb3_get_input_table("application_test")
 
         # Combine data properly
-        combined_data = pd.concat([app_train.data, app_test.data], ignore_index=True)
-        combined_data["DAYS_EMPLOYED"] = (
-            combined_data["DAYS_EMPLOYED"].replace(365243, np.nan).astype(float)
+        base = pd.concat([app_train.data, app_test.data], ignore_index=True)
+        base["DAYS_EMPLOYED"] = (
+            base["DAYS_EMPLOYED"].replace(365243, np.nan).astype(float)
         )
+        base["TARGET"] = base["TARGET"].astype(float)
 
-        # Create new preprocessor with combined data
-        app_train.data = combined_data
+        app_train.data = base
         self.app = app_train.convert_all("category")
         return self.app
 

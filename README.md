@@ -4,6 +4,10 @@ The project focusses on analysis and ML for the [https://www.kaggle.com/competit
 
 A banking information dataset is analysed with the goal to identify individuals at risk of defaulting. Given that the final call on specific threshold chosen will be given by the credit agency, ROC AUC is used as performance metric throughout the notebooks.
 
+A summary of these and the project itself can be found at:
+* [nb0_master.ipynb](notebooks\nb0_master.ipynb)
+
+A final softmax voting classifier (LightGBM GBDT + Logistic Regression) achieved ROC AUC of 0.77109.
 
 Due to to its scope, the project is split across 9 analysis notebooks:
 * [nb0_master.ipynb](notebooks\nb0_master.ipynb) - Master overview and project summary
@@ -18,8 +22,7 @@ Due to to its scope, the project is split across 9 analysis notebooks:
 * [nb9_model_deployment.ipynb](notebooks\nb9_model_deployment.ipynb) - Model deployment and usage demonstration
 
 
-A summary of these and the project itself can be found at:
-* [nb0_master.ipynb](notebooks\nb0_master.ipynb)
+
 
 
 # Quick Start Guide
@@ -32,7 +35,6 @@ git clone https://github.com/TuringCollegeSubmissions/psauci-DS.v2.5.3.4.1
 pip install poetry
 poetry install --no-root
 ```
-
 
 **Note**: The previous commands require python 3.13 installed
 

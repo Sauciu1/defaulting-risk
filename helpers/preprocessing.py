@@ -6,7 +6,7 @@ import pickle
 
 from . import table_navigator
 import numpy as np
-
+from itertools import chain
 
 pd.set_option("future.no_silent_downcasting", True)
 
@@ -25,10 +25,9 @@ def column_list_adapter(columns: list[str] | set[str]) -> list[str]:
         raise TypeError(f"Unsupported column type: {type(columns)}")
 
 
-def convert_bool_to_bool(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+def convert_bool_to_int(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     """Convert specified columns to boolean type."""
     columns = column_list_adapter(columns)
-    df = df.copy()  # Work on a copy to avoid modifying original
 
     for col in columns:
         if col not in df.columns:
@@ -42,26 +41,23 @@ def convert_bool_to_bool(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
 
         if df[col].dtype == "object":
             replacement_dict = {
-                "Y": True,
-                "N": False,
-                "Yes": True,
-                "No": False,
-                "True": True,
-                "False": False,
+                "Y": 1,
+                "N": 0,
+                "Yes": 1,
+                "No": 0,
+                "True": 1,
+                "False": 0,
             }
             df[col] = df[col].astype(str).replace(replacement_dict)
-
-        elif pd.api.types.is_numeric_dtype(df[col]):
-            df[col] = df[col].replace({1: True, 0: False, 1.0: True, 0.0: False})
-
-        df[col] = df[col].astype(bool)
+ 
+        df[col] = df[col].astype(np.int64)
+ 
 
     return df
 
 
 def convert_to_object(df: pd.DataFrame, columns: set) -> pd.DataFrame:
     columns = column_list_adapter(columns)
-    df = df.copy()
 
     for col in columns:
         if col not in df.columns:
@@ -72,11 +68,8 @@ def convert_to_object(df: pd.DataFrame, columns: set) -> pd.DataFrame:
 
 def convert_to_category(df: pd.DataFrame, columns: set) -> pd.DataFrame:
     columns = column_list_adapter(columns)
-    df = df.copy()
-
+    columns = [col for col in columns if col in df.columns]
     for col in columns:
-        if col not in df.columns:
-            continue
         df[col] = df[col].astype("category")
     return df
 
@@ -107,7 +100,7 @@ class Preprocessor:
         self.column_structure = None
 
     def convert_all(self, type: Literal["object", "category"] = None) -> pd.DataFrame:
-        self.data = convert_bool_to_bool(self.data, self.bool_columns)
+        self.data = convert_bool_to_int(self.data, self.bool_columns)
 
         if type is None:
             type = self.categorical_type
@@ -137,11 +130,13 @@ class Preprocessor:
 
         return {"missing": missing, "unexpected": unexpected}
 
-    def _get_provided_columns(self) -> set[str]:
-        """Get all columns that should be in the DataFrame."""
-        return list(
-            self.cat_columns + self.num_columns + self.bool_columns + self.str_columns
-        )
+    def _get_provided_columns(self) -> list[str]:
+        return list(chain(
+            self.cat_columns, 
+            self.num_columns, 
+            self.bool_columns, 
+            self.str_columns
+        ))
 
     def missing_columns(self) -> list[str] | None:
         """Check for columns that were missing in the df."""
@@ -187,55 +182,50 @@ class Preprocessor:
         return X, y, id
 
     def check_conversion_success(self) -> pd.DataFrame | None:
-        """Check if the DataFrame has the expected columns after conversion."""
-        type_checks = {
-            "category": lambda s: s.dtype.name == self.categorical_type,
-            "numeric": pd.api.types.is_numeric_dtype,
-            "bool": lambda s: s.dtype.name == "bool",
-            "object": lambda s: s.dtype.name == "object",
-        }
-
-        type_map = {
-            "category": self.cat_columns,
-            "numeric": self.num_columns,
-            "bool": self.bool_columns,
-            "object": self.str_columns,
-        }
-
+        dtypes_dict = self.data.dtypes.to_dict()
+        
         incorrect_types = []
-        for expected_type, columns in type_map.items():
-            for col in columns:
-                check_func = type_checks[expected_type]
+        type_map = {
+            "category": (self.cat_columns, lambda dtype: dtype.name == self.categorical_type),
+            "numeric": (self.num_columns, pd.api.types.is_numeric_dtype),
+            "bool": (self.bool_columns, pd.api.types.is_numeric_dtype), # Bools are coded as numeric for pandas
+            "object": (self.str_columns, lambda dtype: dtype.name == "object"),
+        }
 
-                if not check_func(self.data[col]):
-                    incorrect_types.append(
-                        {
-                            "column": col,
-                            "actual_dtype": self.data[col].dtype,
-                            "expected_type": expected_type,
-                        }
-                    )
+        for expected_type, (columns, check_func) in type_map.items():
+            for col in columns:
+                if col in dtypes_dict and not check_func(dtypes_dict[col]):
+                    incorrect_types.append({
+                        "column": col,
+                        "actual_dtype": dtypes_dict[col],
+                        "expected_type": expected_type,
+                    })
 
         if incorrect_types:
             print("Columns with incorrect data types found and returned")
-            df_incorrect = pd.DataFrame(incorrect_types)
-            return df_incorrect
-
+            return pd.DataFrame(incorrect_types)
         else:
             print("All columns have the expected data types.")
-        return None
+            return None
 
+
+
+application_table_names = [
+    "application_train",
+    "application_test",
+]
+supporting_table_names = [
+    "bureau",
+    "bureau_balance",
+    "credit_card_balance",
+    "POS_CASH_balance",
+    "previous_application",
+    "installments_payments",
+]
 
 def load_pkl_to_preprocessor(
     table: Literal[
-        "application_train",
-        "application_test",
-        "bureau",
-        "bureau_balance",
-        "credit_card_balance",
-        "POS_CASH_balance",
-        "previous_application",
-        "installments_payments",
+        application_table_names + supporting_table_names
     ],
     tables_path: str = "data/raw_csv",
     columns_dict_path: str = "data/processed"
@@ -244,33 +234,14 @@ def load_pkl_to_preprocessor(
 
     df = table_navigator.get_tables_from_dir(tables_path, table)[table]
 
-    if table in ["application_train", "application_test"]:
-        with open(os.path.join(columns_dict_path, "application_columns.pkl"), "rb") as f:
-            pkl_columns = pickle.load(f)
-        df["DAYS_EMPLOYED"] = df["DAYS_EMPLOYED"].replace(365243, np.nan).astype(float)
-
-    elif table in [
-        "bureau",
-        "bureau_balance",
-        "credit_card_balance",
-        "POS_CASH_balance",
-        "previous_application",
-        "installments_payments",
-    ]:
-        with open(os.path.join(columns_dict_path, "supplementary_tables_columns.pkl"), "rb") as f:
-            pkl_columns = pickle.load(f)
-    else:
-        raise ValueError(f"Unsupported table: {table}.")
-
+    pkl_columns = unpickle_columns(table, columns_dict_path)
     col_types = ["cat_columns", "num_columns", "bool_columns", "str_columns"]
-
     columns = {
         col_type: column_list_adapter(
             [col for col in pkl_columns[col_type] if col in df.columns]
         )
         for col_type in col_types
     }
-
 
     preprocessor = Preprocessor(
         data=df,
@@ -282,6 +253,7 @@ def load_pkl_to_preprocessor(
 
     if table in ["application_train", "application_test"]:
         structure = pkl_columns["application_columns"]
+        df["DAYS_EMPLOYED"] = df["DAYS_EMPLOYED"].replace(365243, np.nan).astype(float)
     else:
         print(pkl_columns["tables_columns"].keys())
         structure = pkl_columns["tables_columns"][table.lower()]
@@ -296,3 +268,23 @@ def load_pkl_to_preprocessor(
     preprocessor.convert_all('category')
 
     return preprocessor
+
+
+def unpickle_columns(table, columns_dict_path) -> dict[str, list[str]]:
+    """Unpickels table appropriate column list"""
+    if table in application_table_names:
+        with open(os.path.join(columns_dict_path, "application_columns.pkl"), "rb") as f:
+            pkl_columns = pickle.load(f)
+        
+
+    elif table in supporting_table_names:
+        with open(os.path.join(columns_dict_path, "supplementary_tables_columns.pkl"), "rb") as f:
+            pkl_columns = pickle.load(f)
+    else:
+        raise ValueError(f"Unsupported table: {table}.")
+
+    
+
+
+
+    return pkl_columns

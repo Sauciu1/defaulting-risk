@@ -1,5 +1,6 @@
 from json import load
 from typing import Literal
+from flask import app
 from shap import models
 from sklearn.compose import ColumnTransformer, make_column_transformer
 from sklearn.pipeline import Pipeline
@@ -130,14 +131,16 @@ class tables_to_input_converters:
         app_train = self.nb3_get_input_table("application_train")
         app_test = self.nb3_get_input_table("application_test")
 
-        # Combine data properly
+        app_train.data["TARGET"] = app_train.data["TARGET"].astype("float32")
         base = pd.concat([app_train.data, app_test.data], ignore_index=True)
         base["DAYS_EMPLOYED"] = (
             base["DAYS_EMPLOYED"].replace(365243, np.nan).astype(float)
         )
-        base["TARGET"] = base["TARGET"].astype(float)
 
         app_train.data = base
+        app_train.bool_columns= [col for col in app_train.bool_columns if col != 'TARGET']
+        app_train.num_columns = app_train.num_columns + ['TARGET']
+
         self.app = app_train.convert_all("category")
         return self.app
 

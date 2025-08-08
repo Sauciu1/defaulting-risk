@@ -2,7 +2,7 @@ import joblib
 import pickle
 import numpy as np
 import pandas as pd
-from flask import Flask, jsonify, request
+from flask import Flask, request
 
 app = Flask("default")
 

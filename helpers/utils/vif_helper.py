@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 from matplotlib.patches import Patch
+import numpy as np
 
 
 def calculate_vif(data, columns=None):
@@ -12,11 +13,11 @@ def calculate_vif(data, columns=None):
     if columns:
         assert all(col in data.columns for col in columns), "missing columns in data"
     else:
-        columns = data.select_dtypes(include=[float, int]).columns.tolist()
+        columns = data.select_dtypes(include=[np.number]).columns.tolist()
         assert columns, "No numeric columns found in the DataFrame"
 
     data = data[columns].copy().dropna(axis=0)
-    assert all(data[col].dtype in [float, int] for col in columns), "All columns must be of type float or int"
+    assert all(data[col].dtype in [np.number] for col in columns), "All columns must be of type float or int"
 
     vif_data = pd.DataFrame()
     vif_data["Feature"] = columns

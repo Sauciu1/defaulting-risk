@@ -75,29 +75,30 @@ class ColumnDescriber:
 
 
 
-def get_tables_from_dir(data_dir:str = "data/raw_csv", tables:list[Literal['application_train', 'application_test', 'HomeCredit_columns_description', 'bureau', 'bureau_balance', 'credit_card_balance', 'POS_CASH_balance', 'previous_application', 'installments_payments']] = None) -> dict[str, pd.DataFrame]:
-    """
-    Load CSV files from a specified directory into a dictionary of DataFrames.
-    """
-    
-    csv_files = [f for f in os.listdir(data_dir) if f.endswith('.csv')]
+_TABLE_CACHE = {}
+
+def _get_csv_files(data_dir, tables):
+    files = [f for f in os.listdir(data_dir) if f.endswith('.csv')]
     if tables:
-        if isinstance(tables, str):
-            tables = [tables]
-        elif not isinstance(tables, list):
-            raise ValueError("The 'tables' parameter must be a list of table names or a single table name string.")
-
+        tables = [tables] if isinstance(tables, str) else tables
         tables = [t + '.csv' if not t.endswith('.csv') else t for t in tables]
-        csv_files = [f for f in csv_files if f in tables]
+        files = [f for f in files if f in tables]
+    assert files, "No specified CSV files found in directory."
+    return files
 
-    assert len(csv_files) > 0, "No specified CSV files found in directory."
+def _load_table(data_dir, file, cache_key, use_cache) -> pd.DataFrame:
+    if use_cache and cache_key in _TABLE_CACHE:
+        print(f"Using cached {file.replace('.csv','')} with shape {_TABLE_CACHE[cache_key].shape}")
+        return _TABLE_CACHE[cache_key]
+    df = pd.read_csv(os.path.join(data_dir, file), encoding='Windows-1252')
+    if use_cache: 
+        _TABLE_CACHE[cache_key] = df
+        print(f"Loaded {file.replace('.csv','')} with shape {df.shape}")
+    else:
+        print(f"Loaded {file.replace('.csv','')} with shape {df.shape}")
+    return df
 
-    print("Loading tables:", csv_files)
-
-    tables = {}
-    for file in csv_files:
-
-        table_name = file.replace('.csv', '')
-        tables[table_name] = pd.read_csv(os.path.join(data_dir, file), encoding='Windows-1252')
-        print("loaded", table_name, "with shape", tables[table_name].shape)
-    return tables
+def get_tables_from_dir(data_dir="data/raw_csv", tables=None, use_cache=True) -> dict[str, pd.DataFrame]:
+    files = _get_csv_files(data_dir, tables)
+    print("Loading tables:", files)
+    return {f.replace('.csv',''): _load_table(data_dir, f, f"{data_dir}/{f}", use_cache) for f in files}

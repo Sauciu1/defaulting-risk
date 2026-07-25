@@ -1,4 +1,10 @@
-# DS.v2.5.3.4.1
+This is shown as an example of work I can complete, moved from a private repo.
+
+Last commit on this repo was on 2025-08, I have had significant changes to my coding practices since then. Mainly related to moving to wsl, bash commands, and following the `src/` structure more strictly.
+
+
+# Defaulting risk analysis
+
 
 The project focusses on analysis and ML for the [https://www.kaggle.com/competitions/home-credit-default-risk/overview](https://www.kaggle.com/competitions/home-credit-default-risk/overview) dataset.
 
